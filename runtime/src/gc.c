@@ -1,8 +1,8 @@
-/* Заглушка сборщика мусора: полностью реализует интерфейс из stella/gc.h, проверяет аргументы,
- * считает статистику и соблюдает ограничение памяти, но освобождает память только при
- * завершении работы. Её можно взять за основу или заменить целиком.
- * Макросы GC_BEFORE_*, GC_WRITE_BARRIER и STELLA_GC_SUPPORT --- места расширения, которые
- * в самой заглушке ничего не делают. */
+/* Заглушка сборщика мусора: полностью реализует интерфейс из stella/gc.h,
+ * проверяет аргументы, считает статистику и соблюдает ограничение памяти, но
+ * освобождает память только при завершении работы. Её можно взять за основу или
+ * заменить целиком. Макросы GC_BEFORE_*, GC_WRITE_BARRIER и STELLA_GC_SUPPORT
+ * --- места расширения, которые в самой заглушке ничего не делают. */
 #include <stella/gc.h>
 
 #include "internal/gc_stats.h"
@@ -25,11 +25,7 @@ struct Allocation {
   Allocation *next;
 };
 
-enum Lifecycle {
-  LIFECYCLE_FRESH,
-  LIFECYCLE_ACTIVE,
-  LIFECYCLE_FINISHED
-};
+enum Lifecycle { LIFECYCLE_FRESH, LIFECYCLE_ACTIVE, LIFECYCLE_FINISHED };
 
 static enum Lifecycle lifecycle = LIFECYCLE_FRESH;
 static size_t max_heap_bytes;
@@ -91,8 +87,7 @@ static void validate_descriptor(const StellaObjectDescriptor *descriptor) {
       descriptor->kind > STELLA_OBJECT_INDIRECTION) {
     stella_abi_violation("unknown object kind");
   }
-  uint32_t known_flags = STELLA_DESCRIPTOR_STATIC |
-                         STELLA_DESCRIPTOR_UPDATABLE;
+  uint32_t known_flags = STELLA_DESCRIPTOR_STATIC | STELLA_DESCRIPTOR_UPDATABLE;
   if ((descriptor->flags & ~known_flags) != 0) {
     stella_abi_violation("unknown descriptor flag");
   }
@@ -100,9 +95,7 @@ static void validate_descriptor(const StellaObjectDescriptor *descriptor) {
       (descriptor->flags & STELLA_DESCRIPTOR_UPDATABLE) != 0) {
     stella_abi_violation("static descriptor is marked updatable");
   }
-  if (add_overflows(
-          descriptor->managed_count,
-          descriptor->primitive_count)) {
+  if (add_overflows(descriptor->managed_count, descriptor->primitive_count)) {
     stella_abi_violation("active field count overflows size_t");
   }
   if (descriptor->managed_count + descriptor->primitive_count >
@@ -119,8 +112,7 @@ static void validate_descriptor(const StellaObjectDescriptor *descriptor) {
       descriptor->entry_code != NULL) {
     stella_abi_violation("non-executable descriptor has entry code");
   }
-  if (descriptor->kind == STELLA_OBJECT_THUNK &&
-      descriptor->entry_arity != 0) {
+  if (descriptor->kind == STELLA_OBJECT_THUNK && descriptor->entry_arity != 0) {
     stella_abi_violation("thunk descriptor has non-zero entry arity");
   }
   if ((descriptor->kind == STELLA_OBJECT_DATA ||
@@ -131,8 +123,7 @@ static void validate_descriptor(const StellaObjectDescriptor *descriptor) {
 }
 
 static Allocation *find_allocation(StellaValue object) {
-  for (Allocation *allocation = allocations;
-       allocation != NULL;
+  for (Allocation *allocation = allocations; allocation != NULL;
        allocation = allocation->next) {
     if (allocation->object == object) {
       return allocation;
@@ -184,10 +175,8 @@ static void require_registered_root(StellaValue *root) {
   }
 }
 
-static void grow_roots(
-    StellaValue ***roots,
-    size_t *capacity,
-    size_t required) {
+static void grow_roots(StellaValue ***roots, size_t *capacity,
+                       size_t required) {
   if (required <= *capacity) {
     return;
   }
@@ -281,10 +270,8 @@ void stella_gc_register_permanent_root(StellaValue *root) {
   if (root_is_registered(root)) {
     stella_abi_violation("duplicate root registration");
   }
-  grow_roots(
-      &permanent_roots,
-      &permanent_root_capacity,
-      permanent_root_count + 1);
+  grow_roots(&permanent_roots, &permanent_root_capacity,
+             permanent_root_count + 1);
   permanent_roots[permanent_root_count++] = root;
   counters.permanent_root_count = permanent_root_count;
 }
@@ -334,14 +321,12 @@ StellaValue stella_gc_alloc(const StellaObjectDescriptor *descriptor) {
 
   object->descriptor = descriptor;
   object->gc_word = 0;
-  object->fields = descriptor->slot_capacity == 0
-      ? NULL
-      : (StellaSlot *)(object + 1);
+  object->fields =
+      descriptor->slot_capacity == 0 ? NULL : (StellaSlot *)(object + 1);
   for (size_t i = 0; i < descriptor->managed_count; ++i) {
     object->fields[i].managed = NULL;
   }
-  for (size_t i = descriptor->managed_count;
-       i < descriptor->slot_capacity;
+  for (size_t i = descriptor->managed_count; i < descriptor->slot_capacity;
        ++i) {
     object->fields[i].primitive = 0;
   }
@@ -364,10 +349,8 @@ StellaValue stella_gc_alloc(const StellaObjectDescriptor *descriptor) {
   return object;
 }
 
-void stella_object_init_managed(
-    StellaValue object,
-    size_t index,
-    StellaValue value) {
+void stella_object_init_managed(StellaValue object, size_t index,
+                                StellaValue value) {
   require_active();
   Allocation *allocation = require_heap_object(object);
   if (index >= object->descriptor->managed_count) {
@@ -380,10 +363,8 @@ void stella_object_init_managed(
   allocation->initialised[index] = 1;
 }
 
-void stella_object_init_primitive(
-    StellaValue object,
-    size_t index,
-    StellaPrimitive value) {
+void stella_object_init_primitive(StellaValue object, size_t index,
+                                  StellaPrimitive value) {
   require_active();
   Allocation *allocation = require_heap_object(object);
   if (index >= object->descriptor->primitive_count) {
@@ -397,9 +378,7 @@ void stella_object_init_primitive(
   allocation->initialised[physical] = 1;
 }
 
-StellaValue stella_gc_read_managed(
-    StellaValue *object_root,
-    size_t index) {
+StellaValue stella_gc_read_managed(StellaValue *object_root, size_t index) {
   require_active();
   require_registered_root(object_root);
   GC_BEFORE_READ(object_root);
@@ -411,10 +390,8 @@ StellaValue stella_gc_read_managed(
   return (*object_root)->fields[index].managed;
 }
 
-void stella_gc_write_managed(
-    StellaValue *object_root,
-    size_t index,
-    StellaValue *value_root) {
+void stella_gc_write_managed(StellaValue *object_root, size_t index,
+                             StellaValue *value_root) {
   require_active();
   require_registered_root(object_root);
   require_registered_root(value_root);
@@ -431,9 +408,7 @@ void stella_gc_write_managed(
   ++counters.managed_writes;
 }
 
-StellaPrimitive stella_object_read_primitive(
-    StellaValue object,
-    size_t index) {
+StellaPrimitive stella_object_read_primitive(StellaValue object, size_t index) {
   require_active();
   validate_object(object);
   if (index >= object->descriptor->primitive_count) {
@@ -443,10 +418,8 @@ StellaPrimitive stella_object_read_primitive(
   return object->fields[object->descriptor->managed_count + index].primitive;
 }
 
-void stella_object_write_primitive(
-    StellaValue object,
-    size_t index,
-    StellaPrimitive value) {
+void stella_object_write_primitive(StellaValue object, size_t index,
+                                   StellaPrimitive value) {
   require_active();
   validate_object(object);
   if ((object->descriptor->flags & STELLA_DESCRIPTOR_STATIC) != 0) {
@@ -459,11 +432,10 @@ void stella_object_write_primitive(
   ++counters.primitive_writes;
 }
 
-void stella_gc_update_object(
-    StellaValue *object_root,
-    const StellaObjectDescriptor *new_descriptor,
-    StellaValue *const new_managed_roots[],
-    const StellaPrimitive new_primitives[]) {
+void stella_gc_update_object(StellaValue *object_root,
+                             const StellaObjectDescriptor *new_descriptor,
+                             StellaValue *const new_managed_roots[],
+                             const StellaPrimitive new_primitives[]) {
   require_active();
   require_registered_root(object_root);
   Allocation *allocation = require_heap_object(*object_root);
@@ -501,8 +473,8 @@ void stella_gc_update_object(
     allocation->initialised[physical] = 1;
     ++counters.primitive_writes;
   }
-  size_t active = new_descriptor->managed_count +
-                  new_descriptor->primitive_count;
+  size_t active =
+      new_descriptor->managed_count + new_descriptor->primitive_count;
   for (size_t i = active; i < new_descriptor->slot_capacity; ++i) {
     (*object_root)->fields[i].primitive = 0;
     allocation->initialised[i] = 0;
@@ -520,27 +492,19 @@ void stella_gc_print_statistics(FILE *output) {
   fprintf(output, "allocated objects: %zu\n", counters.allocated_objects);
   fprintf(output, "collections: %zu\n", counters.collections);
   fprintf(output, "occupied bytes: %zu\n", counters.occupied_bytes);
-  fprintf(
-      output,
-      "maximum occupied bytes: %zu\n",
-      counters.maximum_occupied_bytes);
+  fprintf(output, "maximum occupied bytes: %zu\n",
+          counters.maximum_occupied_bytes);
   fprintf(output, "managed reads: %zu\n", counters.managed_reads);
   fprintf(output, "managed writes: %zu\n", counters.managed_writes);
   fprintf(output, "primitive reads: %zu\n", counters.primitive_reads);
   fprintf(output, "primitive writes: %zu\n", counters.primitive_writes);
-  fprintf(
-      output,
-      "read barrier activations: %zu\n",
-      counters.read_barrier_activations);
-  fprintf(
-      output,
-      "write barrier activations: %zu\n",
-      counters.write_barrier_activations);
+  fprintf(output, "read barrier activations: %zu\n",
+          counters.read_barrier_activations);
+  fprintf(output, "write barrier activations: %zu\n",
+          counters.write_barrier_activations);
   fprintf(output, "dynamic roots: %zu\n", dynamic_root_depth);
-  fprintf(
-      output,
-      "maximum dynamic roots: %zu\n",
-      counters.maximum_dynamic_root_depth);
+  fprintf(output, "maximum dynamic roots: %zu\n",
+          counters.maximum_dynamic_root_depth);
   fprintf(output, "permanent roots: %zu\n", permanent_root_count);
   fprintf(output, "failed allocations: %zu\n", counters.failed_allocations);
 }
@@ -551,20 +515,12 @@ void stella_gc_print_roots(FILE *output) {
     stella_abi_violation("null roots output stream");
   }
   for (size_t i = 0; i < dynamic_root_depth; ++i) {
-    fprintf(
-        output,
-        "dynamic root %zu: slot=%p value=%p\n",
-        i,
-        (void *)dynamic_roots[i],
-        (void *)*dynamic_roots[i]);
+    fprintf(output, "dynamic root %zu: slot=%p value=%p\n", i,
+            (void *)dynamic_roots[i], (void *)*dynamic_roots[i]);
   }
   for (size_t i = 0; i < permanent_root_count; ++i) {
-    fprintf(
-        output,
-        "permanent root %zu: slot=%p value=%p\n",
-        i,
-        (void *)permanent_roots[i],
-        (void *)*permanent_roots[i]);
+    fprintf(output, "permanent root %zu: slot=%p value=%p\n", i,
+            (void *)permanent_roots[i], (void *)*permanent_roots[i]);
   }
 }
 
@@ -573,46 +529,32 @@ void stella_gc_print_state(FILE *output) {
   if (output == NULL) {
     stella_abi_violation("null state output stream");
   }
-  fprintf(
-      output,
-      "%s: occupied=%zu free=%zu limit=%zu\n",
-      GC_DESCRIPTION,
-      counters.occupied_bytes,
-      max_heap_bytes - counters.occupied_bytes,
-      max_heap_bytes);
-  for (Allocation *allocation = allocations;
-       allocation != NULL;
+  fprintf(output, "%s: occupied=%zu free=%zu limit=%zu\n", GC_DESCRIPTION,
+          counters.occupied_bytes, max_heap_bytes - counters.occupied_bytes,
+          max_heap_bytes);
+  for (Allocation *allocation = allocations; allocation != NULL;
        allocation = allocation->next) {
     StellaValue object = allocation->object;
     const StellaObjectDescriptor *descriptor = object->descriptor;
-    fprintf(
-        output,
-        "allocation=[%p,%p) object=%p descriptor=%s kind=%" PRIu32
-        " managed=%zu primitive=%zu capacity=%zu gc_word=%" PRIuPTR "\n",
-        (void *)object,
-        (void *)((unsigned char *)object + allocation->rounded_bytes),
-        (void *)object,
-        descriptor->debug_name == NULL ? "(unnamed)" : descriptor->debug_name,
-        descriptor->kind,
-        descriptor->managed_count,
-        descriptor->primitive_count,
-        descriptor->slot_capacity,
-        object->gc_word);
+    fprintf(output,
+            "allocation=[%p,%p) object=%p descriptor=%s kind=%" PRIu32
+            " managed=%zu primitive=%zu capacity=%zu gc_word=%" PRIuPTR "\n",
+            (void *)object,
+            (void *)((unsigned char *)object + allocation->rounded_bytes),
+            (void *)object,
+            descriptor->debug_name == NULL ? "(unnamed)"
+                                           : descriptor->debug_name,
+            descriptor->kind, descriptor->managed_count,
+            descriptor->primitive_count, descriptor->slot_capacity,
+            object->gc_word);
     for (size_t i = 0; i < descriptor->managed_count; ++i) {
-      fprintf(
-          output,
-          "  managed[%zu]=%p\n",
-          i,
-          (void *)object->fields[i].managed);
+      fprintf(output, "  managed[%zu]=%p\n", i,
+              (void *)object->fields[i].managed);
     }
     for (size_t i = 0; i < descriptor->primitive_count; ++i) {
-      fprintf(
-          output,
-          "  primitive[%zu]=%" PRIuPTR "\n",
-          i,
-          object->fields[descriptor->managed_count + i].primitive);
+      fprintf(output, "  primitive[%zu]=%" PRIuPTR "\n", i,
+              object->fields[descriptor->managed_count + i].primitive);
     }
   }
   stella_gc_print_roots(output);
 }
-
