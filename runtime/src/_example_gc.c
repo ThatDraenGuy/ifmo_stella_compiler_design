@@ -5,7 +5,7 @@
  * --- места расширения, которые в самой заглушке ничего не делают. */
 #include <stella/gc.h>
 
-#include "internal/gc_stats.h"
+#include "internal/_example_gc_stats.h"
 
 #include <inttypes.h>
 #include <stdbool.h>
