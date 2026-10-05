@@ -6,17 +6,20 @@
 #include <stella/runtime.h>
 
 typedef struct Heap {
-  size_t _scan;
-  size_t _next;
-  size_t _limit;
-  size_t _end;
-  char *_to_space;
-  char *_from_space;
-  bool _collect_active;
+  size_t scan;
+  size_t next;
+  size_t limit;
+  size_t end;
+  char *to_space;
+  char *from_space;
+  bool collect_active;
 } Heap;
 
+void heap_init(Heap *heap, size_t start_bytes);
+void heap_destroy(Heap *heap);
 StellaValue heap_alloc(Heap *heap, const StellaObjectDescriptor *const descr);
 void heap_step_collect(Heap *heap, uint8_t steps_count);
 StellaValue heap_forward(Heap *heap, StellaValue obj);
+bool heap_owns_obj(const Heap *heap, StellaValue obj);
 
 #endif

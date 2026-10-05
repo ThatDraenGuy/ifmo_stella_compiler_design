@@ -2,7 +2,7 @@
 #define STELLA_GC_STATS_H
 #include <stddef.h>
 
-typedef struct StellaGcStats {
+typedef struct GcStats {
   size_t requested_bytes;
   size_t rounded_bytes;
   size_t allocated_objects;
@@ -19,6 +19,6 @@ typedef struct StellaGcStats {
   size_t maximum_dynamic_root_depth;
   size_t permanent_root_count;
   size_t failed_allocations;
-} StellaGcStats;
+} GcStats;
 
 #endif
