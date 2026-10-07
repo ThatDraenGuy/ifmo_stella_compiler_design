@@ -32,10 +32,12 @@ void stella_gc_init(const StellaGcConfig *config) {
   CTX->config.max_heap_bytes = config->max_heap_bytes;
   // TODO fill config
 
+  stats_init(&CTX->stats);
   roots_init(&CTX->roots);
   roots_init(&CTX->perma_roots);
 
   heap_init(&CTX->heap, CTX->config.min_heap_bytes);
+  CTX->stats.heap_size = CTX->config.min_heap_bytes;
 }
 
 void stella_gc_shutdown(void) {

@@ -87,7 +87,9 @@ StellaValue stella_gc_alloc(const StellaObjectDescriptor *descriptor) {
 
   Heap *heap = gc_heap();
   heap_step_collect(heap, gc_config()->collect_steps_count);
-  return heap_alloc(heap, descriptor);
+  StellaValue res = heap_alloc(heap, descriptor);
+  gc_stats()->allocs++;
+  return res;
 }
 
 void stella_object_init_managed(StellaValue object, size_t index,
@@ -118,6 +120,8 @@ StellaValue stella_gc_read_managed(StellaValue *object_root, size_t index) {
   StellaValue field = ((*object_root)->fields[index].managed);
   StellaValue forwarded = heap_forward(gc_heap(), field);
   (*object_root)->fields[index].managed = forwarded;
+  gc_stats()->managed_reads++;
+  gc_stats()->read_barrier_activations++;
   return forwarded;
 }
 
@@ -133,6 +137,7 @@ void stella_gc_write_managed(StellaValue *object_root, size_t index,
     stella_abi_violation("managed write index out of range");
   }
   (*object_root)->fields[index].managed = *value_root;
+  gc_stats()->managed_writes++;
 }
 
 StellaPrimitive stella_object_read_primitive(StellaValue object, size_t index) {
@@ -140,7 +145,10 @@ StellaPrimitive stella_object_read_primitive(StellaValue object, size_t index) {
   if (index >= object->descriptor->primitive_count) {
     stella_abi_violation("primitive read index out of range");
   }
-  return object->fields[object->descriptor->managed_count + index].primitive;
+  StellaPrimitive res =
+      object->fields[object->descriptor->managed_count + index].primitive;
+  gc_stats()->primitive_reads++;
+  return res;
 }
 
 void stella_object_write_primitive(StellaValue object, size_t index,
@@ -153,6 +161,7 @@ void stella_object_write_primitive(StellaValue object, size_t index,
     stella_abi_violation("primitive write index out of range");
   }
   object->fields[object->descriptor->managed_count + index].primitive = value;
+  gc_stats()->primitive_writes++;
 }
 
 void stella_gc_update_object(StellaValue *object_root,
@@ -182,10 +191,12 @@ void stella_gc_update_object(StellaValue *object_root,
 
   for (size_t i = 0; i < new_descriptor->managed_count; ++i) {
     (*object_root)->fields[i].managed = *new_managed_roots[i];
+    gc_stats()->managed_writes++;
   }
   for (size_t i = 0; i < new_descriptor->primitive_count; ++i) {
     size_t physical = new_descriptor->managed_count + i;
     (*object_root)->fields[physical].primitive = new_primitives[i];
+    gc_stats()->primitive_writes++;
   }
   size_t active =
       new_descriptor->managed_count + new_descriptor->primitive_count;

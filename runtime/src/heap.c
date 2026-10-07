@@ -55,6 +55,7 @@ static inline size_t min(size_t l, size_t r) { return l < r ? l : r; }
 static void handle_oom(Heap *heap, size_t requested_bytes) {
   GcConfig *conf = gc_config();
   if (heap->end == conf->max_heap_bytes) {
+    gc_stats()->failed_allocations++;
     stella_gc_out_of_memory(requested_bytes);
   }
 
@@ -68,6 +69,7 @@ static void handle_oom(Heap *heap, size_t requested_bytes) {
            new_heap_size != conf->max_heap_bytes);
 
   if (new_heap_size - heap->end < requested_bytes) {
+    gc_stats()->failed_allocations++;
     stella_gc_out_of_memory(requested_bytes);
   }
 
@@ -79,6 +81,9 @@ static void handle_oom(Heap *heap, size_t requested_bytes) {
           heap->to_space + heap->limit, heap->end - heap->limit);
   heap->limit = new_heap_size - (heap->end - heap->limit);
   heap->end = new_heap_size;
+
+  gc_stats()->heap_growths++;
+  gc_stats()->heap_size = new_heap_size;
 }
 
 static StellaValue perform_forward(Heap *heap, StellaValue obj) {
@@ -119,9 +124,17 @@ static void start_collect(Heap *heap) {
   roots_foreach(roots, root, { *root = perform_forward(heap, *root); });
 }
 
+static size_t resolve_obj_size(const StellaObjectDescriptor *const descr) {
+  size_t obj_size = object_size(descr);
+  size_t round_size = rounded_size(obj_size);
+  gc_stats()->requested_bytes += obj_size;
+  gc_stats()->rounded_bytes += round_size;
+  return round_size;
+}
+
 static StellaValue alloc_to_space(Heap *heap,
-                                  const StellaObjectDescriptor *const descr) {
-  size_t size = rounded_size(object_size(descr));
+                                  const StellaObjectDescriptor *const descr,
+                                  size_t size) {
   if (heap->next >= heap->limit - size) {
     handle_oom(heap, size);
   }
@@ -132,11 +145,11 @@ static StellaValue alloc_to_space(Heap *heap,
 }
 
 static StellaValue alloc_from_space(Heap *heap,
-                                    const StellaObjectDescriptor *const descr) {
-  size_t size = rounded_size(object_size(descr));
-  if (heap->next + size > heap->limit) {
+                                    const StellaObjectDescriptor *const descr,
+                                    size_t size) {
+  if (heap->next + size >= heap->limit) {
     start_collect(heap);
-    return alloc_to_space(heap, descr);
+    return alloc_to_space(heap, descr, size);
   } else {
     StellaValue res = (StellaValue)(heap->from_space + heap->next);
     res->gc_word = GC_WORD_NULL;
@@ -145,12 +158,24 @@ static StellaValue alloc_from_space(Heap *heap,
   }
 }
 
+static size_t count_occupied_bytes(const Heap *heap) {
+  return (heap->next + (heap->end - heap->limit));
+}
+
 StellaValue heap_alloc(Heap *heap, const StellaObjectDescriptor *const descr) {
+  size_t size = resolve_obj_size(descr);
+  StellaValue res;
   if (heap->collect_active) {
-    return alloc_to_space(heap, descr);
+    res = alloc_to_space(heap, descr, size);
   } else {
-    return alloc_from_space(heap, descr);
+    res = alloc_from_space(heap, descr, size);
   }
+
+  gc_stats()->occupied_bytes = count_occupied_bytes(heap);
+  if (gc_stats()->occupied_bytes > gc_stats()->maximum_occupied_bytes) {
+    gc_stats()->maximum_occupied_bytes = gc_stats()->occupied_bytes;
+  }
+  return res;
 }
 
 static void shrink_if_underfilled(Heap *heap) {
@@ -168,6 +193,9 @@ static void shrink_if_underfilled(Heap *heap) {
     heap->from_space = realloc(heap->from_space, new_heap_size);
     heap->limit = new_heap_size - (heap->end - heap->limit);
     heap->end = new_heap_size;
+
+    gc_stats()->heap_shrinks++;
+    gc_stats()->heap_size = new_heap_size;
   }
 }
 
@@ -186,6 +214,7 @@ void heap_step_collect(Heap *heap, uint8_t steps_count) {
     // TODO get rid of size recalculation?
     size_t size = rounded_size(object_size(obj->descriptor));
     heap->scan += size;
+    gc_stats()->collection_steps++;
   }
   if (heap->scan == heap->next) {
     // end collect
@@ -199,6 +228,7 @@ void heap_step_collect(Heap *heap, uint8_t steps_count) {
 
 bool heap_owns_obj(const Heap *heap, StellaValue obj) {
   // TODO check object borders?
+  // actually, probably unneccessary
   return heap_is_ptr_to_space(heap, obj) || heap_is_ptr_from_space(heap, obj);
 }
 
