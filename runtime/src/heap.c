@@ -1,5 +1,6 @@
 #include <internal/context.h>
 #include <internal/heap.h>
+#include <internal/utils.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stella/gc.h>
@@ -48,9 +49,6 @@ static bool heap_is_ptr_to_space(const Heap *heap, void *ptr) {
   char *cptr = (char *)ptr;
   return cptr >= heap->to_space && cptr < (heap->to_space + heap->end);
 }
-
-static inline size_t max(size_t l, size_t r) { return l > r ? l : r; }
-static inline size_t min(size_t l, size_t r) { return l < r ? l : r; }
 
 static void handle_oom(Heap *heap, size_t requested_bytes) {
   GcConfig *conf = gc_config();
@@ -170,6 +168,9 @@ StellaValue heap_alloc(Heap *heap, const StellaObjectDescriptor *const descr) {
   } else {
     res = alloc_from_space(heap, descr, size);
   }
+
+  res->gc_word = GC_WORD_NULL;
+  res->fields = descr->slot_capacity == 0 ? NULL : (StellaSlot *)(res + 1);
 
   gc_stats()->occupied_bytes = count_occupied_bytes(heap);
   if (gc_stats()->occupied_bytes > gc_stats()->maximum_occupied_bytes) {

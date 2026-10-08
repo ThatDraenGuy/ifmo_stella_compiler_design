@@ -9,8 +9,11 @@ typedef struct GcConfig {
   size_t max_heap_bytes;
   uint8_t collect_steps_count;
 
+  double collect_start_threshold;
   double heap_growth_factor;
   double heap_shrink_threshold;
 } GcConfig;
+
+void gc_config_init_env(GcConfig *config);
 
 #endif

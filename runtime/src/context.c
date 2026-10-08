@@ -30,8 +30,8 @@ void stella_gc_init(const StellaGcConfig *config) {
 
   CTX = malloc(sizeof(GcCtx));
   CTX->config.max_heap_bytes = config->max_heap_bytes;
-  // TODO fill config
 
+  gc_config_init_env(&CTX->config);
   stats_init(&CTX->stats);
   roots_init(&CTX->roots);
   roots_init(&CTX->perma_roots);
@@ -56,7 +56,7 @@ void stella_gc_shutdown(void) {
   free(CTX);
 }
 
-inline GcCtx *gc_ctx() {
+static inline GcCtx *gc_ctx() {
   if (CTX == NULL) {
     stella_abi_violation("Attempt to access GC while it is not active");
   }

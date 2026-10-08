@@ -1,6 +1,6 @@
 project(stella_compiler_runtime C)
 
-set(USER_SRC "examples/chat.c" STRING "User's Stella program (trnslated into C)")
+set(USER_SRC "examples/double.c" STRING "User's Stella program (trnslated into C)")
 
 set(RUNTIME_APP ${PROJECT_NAME}_app)
 set(RUNTIME_APP ${RUNTIME_APP} PARENT_SCOPE)

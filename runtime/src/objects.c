@@ -89,6 +89,15 @@ StellaValue stella_gc_alloc(const StellaObjectDescriptor *descriptor) {
   heap_step_collect(heap, gc_config()->collect_steps_count);
   StellaValue res = heap_alloc(heap, descriptor);
   gc_stats()->allocs++;
+
+  res->descriptor = descriptor;
+  for (size_t i = 0; i < descriptor->managed_count; ++i) {
+    res->fields[i].managed = NULL;
+  }
+  for (size_t i = 0; i < descriptor->primitive_count; ++i) {
+    size_t physical = descriptor->managed_count + i;
+    res->fields[physical].primitive = 0;
+  }
   return res;
 }
 

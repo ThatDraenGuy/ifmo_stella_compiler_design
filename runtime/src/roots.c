@@ -16,9 +16,9 @@ void roots_init(RootVec *vec) {
 void roots_push(RootVec *vec, StellaRoot item) {
   if (vec->capacity == vec->size) {
     vec->capacity *= GROW_FACTOR;
-    vec->data = realloc(vec->data, vec->capacity);
+    vec->data = realloc(vec->data, sizeof(StellaRoot) * vec->capacity);
   }
-  vec->data[vec->size] = item;
+  vec->data[vec->size++] = item;
 }
 
 StellaRoot roots_get(RootVec *vec, size_t idx) {

@@ -24,11 +24,13 @@ size_t roots_size(RootVec *vec);
 void roots_destroy(RootVec *vec);
 
 #define roots_foreach(Vector, item_var, Action)                                \
-  {                                                                            \
-    StellaRoot item_var;                                                       \
+  if (roots_size(Vector) > 0) {                                                \
+    StellaRoot item_var = roots_get(Vector, 0);                                \
     size_t index = 0;                                                          \
-    for (item_var = roots_get(Vector, index); index < roots_size(Vector);      \
-         index++, item_var = roots_get(Vector, index))                         \
+    for (; index < roots_size(Vector);                                         \
+         index++, item_var = index < roots_size(Vector)                        \
+                                 ? roots_get(Vector, index)                    \
+                                 : NULL)                                       \
       Action                                                                   \
   }
 
