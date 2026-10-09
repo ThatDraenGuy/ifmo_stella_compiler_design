@@ -73,6 +73,7 @@ static void handle_oom(Heap *heap, size_t requested_bytes) {
 
   heap->to_space = realloc(heap->to_space, new_heap_size);
   heap->from_space = realloc(heap->from_space, new_heap_size);
+  // TODO fix fields pointers apparently
 
   //"смещаем" свежие объекты в новый конец to_space.
   memmove(heap->to_space + new_heap_size - (heap->end - heap->limit),
@@ -88,7 +89,7 @@ static StellaValue perform_forward(Heap *heap, StellaValue obj) {
   if (obj == NULL || !heap_is_ptr_from_space(heap, obj)) {
     return obj;
   }
-  if (obj->gc_word != 0) {
+  if (obj->gc_word != GC_WORD_NULL) {
     return (StellaValue)(obj->gc_word);
   }
   size_t size = rounded_size(object_size(obj->descriptor));
@@ -97,6 +98,11 @@ static StellaValue perform_forward(Heap *heap, StellaValue obj) {
     handle_oom(heap, size);
   }
   StellaValue newObj = memcpy(heap->to_space + heap->next, obj, size);
+
+  // the most evil thing imaginable. why.
+  newObj->fields =
+      obj->descriptor->slot_capacity == 0 ? NULL : (StellaSlot *)(newObj + 1);
+
   heap->next += size;
   obj->gc_word = (uintptr_t)newObj;
   return newObj;
@@ -171,6 +177,7 @@ StellaValue heap_alloc(Heap *heap, const StellaObjectDescriptor *const descr) {
 
   res->gc_word = GC_WORD_NULL;
   res->fields = descr->slot_capacity == 0 ? NULL : (StellaSlot *)(res + 1);
+  res->descriptor = descr;
 
   gc_stats()->occupied_bytes = count_occupied_bytes(heap);
   if (gc_stats()->occupied_bytes > gc_stats()->maximum_occupied_bytes) {
@@ -210,7 +217,7 @@ void heap_step_collect(Heap *heap, uint8_t steps_count) {
 
     for (size_t i = 0; i < obj->descriptor->managed_count; i++) {
       StellaValue field = obj->fields[i].managed;
-      obj->fields[i].managed = heap_forward(heap, field);
+      obj->fields[i].managed = perform_forward(heap, field);
     }
     // TODO get rid of size recalculation?
     size_t size = rounded_size(object_size(obj->descriptor));

@@ -90,7 +90,6 @@ StellaValue stella_gc_alloc(const StellaObjectDescriptor *descriptor) {
   StellaValue res = heap_alloc(heap, descriptor);
   gc_stats()->allocs++;
 
-  res->descriptor = descriptor;
   for (size_t i = 0; i < descriptor->managed_count; ++i) {
     res->fields[i].managed = NULL;
   }
