@@ -2,11 +2,18 @@
     "program": "double",
     "env": [
         "STELLA_GC_STATS=1",
-        "STELLA_GC_COLLECT_START_THRESHOLD=0.5"
+        "STELLA_GC_STATS_JSON=1"
     ],
     "args": [
         "40",
         "4096"
     ],
-    "expected": "80"
+    "expected": "80",
+    "assertions": {
+        "collections": 0,
+        "collection_steps": 0,
+        "maximum_occupied_bytes": 3840,
+        "heap_size": 4096
+    },
+    "comment": "Размер кучи больше запрашиваемой памяти, ожидается 0 сборок"
 }

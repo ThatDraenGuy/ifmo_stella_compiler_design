@@ -8,7 +8,6 @@ void stats_init(GcStats *stats) {
   stats->collection_steps = 0;
   stats->collections = 0;
   stats->dynamic_root_depth = 0;
-  stats->failed_allocations = 0;
   stats->managed_reads = 0;
   stats->managed_writes = 0;
   stats->maximum_dynamic_root_depth = 0;
@@ -30,30 +29,58 @@ void stella_gc_print_statistics(FILE *output) {
     stella_abi_violation("null statistics output stream");
   }
 
-  fprintf(output, "GC stats\n");
-  fprintf(output, "requested bytes: %zu\n", stats->requested_bytes);
-  fprintf(output, "requested bytes (with rounding): %zu\n",
-          stats->rounded_bytes);
-  fprintf(output, "alloc calls: %zu\n", stats->allocs);
-  fprintf(output, "collections: %zu\n", stats->collections);
-  fprintf(output, "collection steps: %zu\n", stats->collection_steps);
-  fprintf(output, "currently occupied bytes: %zu\n", stats->occupied_bytes);
-  fprintf(output, "maximum occupied bytes: %zu\n",
-          stats->maximum_occupied_bytes);
-  fprintf(output, "managed reads count: %zu\n", stats->managed_reads);
-  fprintf(output, "managed writes count: %zu\n", stats->managed_writes);
-  fprintf(output, "primitive reads count: %zu\n", stats->primitive_reads);
-  fprintf(output, "primitive writes count: %zu\n", stats->primitive_writes);
-  fprintf(output, "read barrier activations: %zu\n",
-          stats->read_barrier_activations);
-  fprintf(output, "current dynamic roots count: %zu\n",
-          stats->dynamic_root_depth);
-  fprintf(output, "maximum dynamic roots count: %zu\n",
-          stats->maximum_dynamic_root_depth);
-  fprintf(output, "permanent roots count: %zu\n", stats->permanent_root_count);
-  fprintf(output, "failed allocations: %zu\n", stats->failed_allocations);
-  fprintf(output, "out of budget scans: %zu\n", stats->out_of_budget_scans);
-  fprintf(output, "current heap size: %zu\n", stats->heap_size);
+  if (gc_config()->json_stats) {
+    fprintf(output, "{\n");
+    fprintf(output, "\"requested_bytes\": %zu,\n", stats->requested_bytes);
+    fprintf(output, "\"rounded_bytes\": %zu,\n", stats->rounded_bytes);
+    fprintf(output, "\"allocs\": %zu,\n", stats->allocs);
+    fprintf(output, "\"collections\": %zu,\n", stats->collections);
+    fprintf(output, "\"collection_steps\": %zu,\n", stats->collection_steps);
+    fprintf(output, "\"occupied_bytes\": %zu,\n", stats->occupied_bytes);
+    fprintf(output, "\"maximum_occupied_bytes\": %zu,\n",
+            stats->maximum_occupied_bytes);
+    fprintf(output, "\"managed_reads\": %zu,\n", stats->managed_reads);
+    fprintf(output, "\"managed_writes\": %zu,\n", stats->managed_writes);
+    fprintf(output, "\"primitive_reads\": %zu,\n", stats->primitive_reads);
+    fprintf(output, "\"primitive_writes\": %zu,\n", stats->primitive_writes);
+    fprintf(output, "\"read_barrier_activations\": %zu,\n",
+            stats->read_barrier_activations);
+    fprintf(output, "\"dynamic_root_depth\": %zu,\n",
+            stats->dynamic_root_depth);
+    fprintf(output, "\"maximum_dynamic_root_depth\": %zu,\n",
+            stats->maximum_dynamic_root_depth);
+    fprintf(output, "\"permanent_root_count\": %zu,\n",
+            stats->permanent_root_count);
+    fprintf(output, "\"out_of_budget_scans\": %zu,\n",
+            stats->out_of_budget_scans);
+    fprintf(output, "\"heap_size\": %zu\n", stats->heap_size);
+    fprintf(output, "}");
+  } else {
+    fprintf(output, "GC stats\n");
+    fprintf(output, "requested bytes: %zu\n", stats->requested_bytes);
+    fprintf(output, "requested bytes (with rounding): %zu\n",
+            stats->rounded_bytes);
+    fprintf(output, "alloc calls: %zu\n", stats->allocs);
+    fprintf(output, "collections: %zu\n", stats->collections);
+    fprintf(output, "collection steps: %zu\n", stats->collection_steps);
+    fprintf(output, "currently occupied bytes: %zu\n", stats->occupied_bytes);
+    fprintf(output, "maximum occupied bytes: %zu\n",
+            stats->maximum_occupied_bytes);
+    fprintf(output, "managed reads count: %zu\n", stats->managed_reads);
+    fprintf(output, "managed writes count: %zu\n", stats->managed_writes);
+    fprintf(output, "primitive reads count: %zu\n", stats->primitive_reads);
+    fprintf(output, "primitive writes count: %zu\n", stats->primitive_writes);
+    fprintf(output, "read barrier activations: %zu\n",
+            stats->read_barrier_activations);
+    fprintf(output, "current dynamic roots count: %zu\n",
+            stats->dynamic_root_depth);
+    fprintf(output, "maximum dynamic roots count: %zu\n",
+            stats->maximum_dynamic_root_depth);
+    fprintf(output, "permanent roots count: %zu\n",
+            stats->permanent_root_count);
+    fprintf(output, "out of budget scans: %zu\n", stats->out_of_budget_scans);
+    fprintf(output, "current heap size: %zu\n", stats->heap_size);
+  }
 }
 
 void stella_gc_print_roots(FILE *output) {

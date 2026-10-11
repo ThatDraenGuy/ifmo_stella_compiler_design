@@ -8,6 +8,9 @@
 #define COLLECT_START_THRESHOLD "STELLA_GC_COLLECT_START_THRESHOLD"
 #define COLLECT_START_THRESHOLD_DEF 1.0
 
+#define JSON_STATS "STELLA_GC_STATS_JSON"
+#define JSON_STATS_DEF false
+
 void gc_config_init_env(GcConfig *config) {
   {
     char *collect_steps_count_str = getenv(COLLECT_STEPS_COUNT);
@@ -36,6 +39,20 @@ void gc_config_init_env(GcConfig *config) {
                              "number between 0 and 1");
       }
       config->collect_start_threshold = collect_start_threshold;
+    }
+  }
+
+  {
+    char *json_stats_str = getenv(JSON_STATS);
+    if (json_stats_str == NULL) {
+      config->collect_steps_count = JSON_STATS_DEF;
+    } else {
+      int json_stats = atoi(json_stats_str);
+      if (json_stats != 0 && json_stats != 1) {
+        stella_abi_violation(JSON_STATS
+                             " is set to invalid value; expected a 0 or 1 ");
+      }
+      config->json_stats = json_stats == 1;
     }
   }
 }

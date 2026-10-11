@@ -51,7 +51,6 @@ static bool heap_is_ptr_to_space(const Heap *heap, void *ptr) {
 }
 
 static void handle_oom(Heap *heap, size_t requested_bytes) {
-  gc_stats()->failed_allocations++;
   stella_gc_out_of_memory(requested_bytes);
 }
 

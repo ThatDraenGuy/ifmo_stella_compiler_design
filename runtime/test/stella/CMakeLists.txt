@@ -49,9 +49,10 @@ foreach(TEST_ST_PARAM ${TEST_ST_PARAMS})
     if(ENV_LEN GREATER 0)
         foreach(i RANGE ${ENV_LAST_INDEX})
             string(JSON ELEM GET ${JSON_DATA} env ${i})
-            list(APPEND TEST_ENV ";${ELEM}")
+            list(APPEND TEST_ENV "${ELEM}")
         endforeach()
     endif()
+    list(JOIN TEST_ENV "\;" TEST_ENV_STR)
 
     add_test(
         NAME ${TEST_NAME}
@@ -59,7 +60,7 @@ foreach(TEST_ST_PARAM ${TEST_ST_PARAMS})
         WORKING_DIRECTORY ${TEST_WORKING_DIR}
     )
     set_tests_properties(${TEST_NAME} PROPERTIES
-        ENVIRONMENT ${TEST_ENV}
+        ENVIRONMENT ${TEST_ENV_STR}
     )
 endforeach()
 

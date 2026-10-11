@@ -13,11 +13,27 @@ if(ARGS_LEN GREATER 0)
 endif()
 
 
-execute_process(COMMAND echo ${TEST_ARGS})
 execute_process(
     COMMAND ${TEST_EXECUTABLE} ${TEST_ARGS}
     RESULT_VARIABLE status
+    OUTPUT_VARIABLE output
+    ERROR_VARIABLE stats
+    OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+
+string(JSON ASSERTIONS_LEN LENGTH "${JSON_DATA}" assertions)
+math(EXPR ASSERTIONS_LAST_INDEX "${ASSERTIONS_LEN} - 1")
+if(ASSERTIONS_LEN GREATER 0)
+    foreach(i RANGE ${ASSERTIONS_LAST_INDEX})
+        string(JSON KEY MEMBER ${JSON_DATA} assertions ${i})
+        string(JSON EXPECTED_VALUE GET "${JSON_DATA}" assertions "${KEY}")
+
+        string(JSON ACTUAL_VALUE GET "${stats}" "${KEY}")
+        if (NOT ACTUAL_VALUE STREQUAL EXPECTED_VALUE)
+            MESSAGE(FATAL_ERROR "Test assertion failed for key \"${KEY}\". Expected: ${EXPECTED_VALUE}; Actual: ${ACTUAL_VALUE}")
+        endif()
+    endforeach()
+endif()
 
 if(status)
     MESSAGE(FATAL_ERROR "Test executing status: ${status}")
