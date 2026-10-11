@@ -15,3 +15,6 @@ file(GLOB USER_SOURCES ${USER_SRC})
 add_executable(${RUNTIME_APP} ${RUNTIME_SOURCES} ${USER_SOURCES})
 target_include_directories(${RUNTIME_APP} PRIVATE ${STELLA_HEADERS})
 target_link_libraries(${RUNTIME_APP} PRIVATE ${GC_LIB})
+
+enable_testing()
+add_subdirectory(test)
