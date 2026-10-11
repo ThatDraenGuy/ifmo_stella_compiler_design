@@ -19,9 +19,6 @@ void stats_init(GcStats *stats) {
   stats->read_barrier_activations = 0;
   stats->requested_bytes = 0;
   stats->rounded_bytes = 0;
-
-  stats->heap_growths = 0;
-  stats->heap_shrinks = 0;
   stats->heap_size = 0;
 }
 
@@ -52,8 +49,6 @@ void stella_gc_print_statistics(FILE *output) {
           stats->maximum_dynamic_root_depth);
   fprintf(output, "permanent roots count: %zu\n", stats->permanent_root_count);
   fprintf(output, "failed allocations: %zu\n", stats->failed_allocations);
-  fprintf(output, "heap growth count: %zu\n", stats->heap_growths);
-  fprintf(output, "heap shrink count: %zu\n", stats->heap_shrinks);
   fprintf(output, "current heap size: %zu\n", stats->heap_size);
 }
 

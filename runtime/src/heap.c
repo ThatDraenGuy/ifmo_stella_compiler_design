@@ -51,38 +51,8 @@ static bool heap_is_ptr_to_space(const Heap *heap, void *ptr) {
 }
 
 static void handle_oom(Heap *heap, size_t requested_bytes) {
-  GcConfig *conf = gc_config();
-  if (heap->end == conf->max_heap_bytes) {
-    gc_stats()->failed_allocations++;
-    stella_gc_out_of_memory(requested_bytes);
-  }
-
-  // пытаемся увеличить размер кучи так, чтобы запрошенные байты влезли
-  size_t new_heap_size = heap->end;
-  do {
-    size_t new_heap_size =
-        max(conf->max_heap_bytes,
-            (size_t)(conf->heap_growth_factor * (double)heap->end));
-  } while (new_heap_size - heap->end < requested_bytes &&
-           new_heap_size != conf->max_heap_bytes);
-
-  if (new_heap_size - heap->end < requested_bytes) {
-    gc_stats()->failed_allocations++;
-    stella_gc_out_of_memory(requested_bytes);
-  }
-
-  heap->to_space = realloc(heap->to_space, new_heap_size);
-  heap->from_space = realloc(heap->from_space, new_heap_size);
-  // TODO fix fields pointers apparently
-
-  //"смещаем" свежие объекты в новый конец to_space.
-  memmove(heap->to_space + new_heap_size - (heap->end - heap->limit),
-          heap->to_space + heap->limit, heap->end - heap->limit);
-  heap->limit = new_heap_size - (heap->end - heap->limit);
-  heap->end = new_heap_size;
-
-  gc_stats()->heap_growths++;
-  gc_stats()->heap_size = new_heap_size;
+  gc_stats()->failed_allocations++;
+  stella_gc_out_of_memory(requested_bytes);
 }
 
 static StellaValue perform_forward(Heap *heap, StellaValue obj) {
@@ -151,7 +121,14 @@ static StellaValue alloc_to_space(Heap *heap,
 static StellaValue alloc_from_space(Heap *heap,
                                     const StellaObjectDescriptor *const descr,
                                     size_t size) {
-  if (heap->next + size >= heap->limit) {
+  bool do_start_collect =
+      gc_config()->collect_start_threshold == 1.0
+          ? heap->next + size >= heap->limit
+          : heap->next + size + (heap->end - heap->limit) >=
+                (size_t)((double)heap->end *
+                         gc_config()->collect_start_threshold);
+
+  if (do_start_collect) {
     start_collect(heap);
     return alloc_to_space(heap, descr, size);
   } else {
@@ -186,27 +163,6 @@ StellaValue heap_alloc(Heap *heap, const StellaObjectDescriptor *const descr) {
   return res;
 }
 
-static void shrink_if_underfilled(Heap *heap) {
-  //"сжимаем" кучу если после сборки в ней осталось "много" свободного места
-  GcConfig *conf = gc_config();
-  size_t used = heap->next + (heap->end - heap->limit);
-  if (used < (size_t)(conf->heap_shrink_threshold * (double)heap->end) &&
-      heap->end > conf->min_heap_bytes) {
-    size_t new_heap_size =
-        min(conf->min_heap_bytes,
-            (size_t)((double)heap->end / conf->heap_growth_factor));
-    memmove(heap->to_space + new_heap_size - (heap->end - heap->limit),
-            heap->to_space + heap->limit, heap->end - heap->limit);
-    heap->to_space = realloc(heap->to_space, new_heap_size);
-    heap->from_space = realloc(heap->from_space, new_heap_size);
-    heap->limit = new_heap_size - (heap->end - heap->limit);
-    heap->end = new_heap_size;
-
-    gc_stats()->heap_shrinks++;
-    gc_stats()->heap_size = new_heap_size;
-  }
-}
-
 void heap_step_collect(Heap *heap, uint8_t steps_count) {
   if (!heap->collect_active) {
     return;
@@ -226,7 +182,6 @@ void heap_step_collect(Heap *heap, uint8_t steps_count) {
   }
   if (heap->scan == heap->next) {
     // end collect
-    shrink_if_underfilled(heap);
     heap->collect_active = false;
     char *tmp = heap->to_space;
     heap->to_space = heap->from_space;

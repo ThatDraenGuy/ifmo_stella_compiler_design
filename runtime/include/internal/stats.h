@@ -18,9 +18,6 @@ typedef struct GcStats {
   size_t maximum_dynamic_root_depth;
   size_t permanent_root_count;
   size_t failed_allocations;
-
-  size_t heap_growths;
-  size_t heap_shrinks;
   size_t heap_size;
 } GcStats;
 
