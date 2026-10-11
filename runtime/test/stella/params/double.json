@@ -1,0 +1,12 @@
+{
+    "program": "double",
+    "env": [
+        "STELLA_GC_STATS=1",
+        "STELLA_GC_COLLECT_START_THRESHOLD=0.5"
+    ],
+    "args": [
+        "40",
+        "4096"
+    ],
+    "expected": "80"
+}

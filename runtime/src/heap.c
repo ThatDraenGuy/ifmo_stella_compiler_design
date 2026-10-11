@@ -64,7 +64,7 @@ static StellaValue perform_forward(Heap *heap, StellaValue obj) {
   }
   size_t size = rounded_size(object_size(obj->descriptor));
   if (heap->next + size > heap->limit) {
-    // либо падаем, либо увеличиваем размер кучи
+    // падаем
     handle_oom(heap, size);
   }
   StellaValue newObj = memcpy(heap->to_space + heap->next, obj, size);
@@ -76,6 +76,19 @@ static StellaValue perform_forward(Heap *heap, StellaValue obj) {
   heap->next += size;
   obj->gc_word = (uintptr_t)newObj;
   return newObj;
+}
+
+static void perform_step_collect(Heap *heap) {
+  StellaValue obj = (StellaValue)(heap->to_space + heap->scan);
+
+  for (size_t i = 0; i < obj->descriptor->managed_count; i++) {
+    StellaValue field = obj->fields[i].managed;
+    obj->fields[i].managed = perform_forward(heap, field);
+  }
+  // TODO get rid of size recalculation?
+  size_t size = rounded_size(object_size(obj->descriptor));
+  heap->scan += size;
+  gc_stats()->collection_steps++;
 }
 
 StellaValue heap_forward(Heap *heap, StellaValue obj) {
@@ -96,6 +109,20 @@ static void start_collect(Heap *heap) {
 
   RootVec *roots = gc_roots();
   roots_foreach(roots, root, { *root = perform_forward(heap, *root); });
+  gc_stats()->collections++;
+}
+
+static void finish_collect(Heap *heap) {
+  while (heap->scan < heap->next) {
+    perform_step_collect(heap);
+  }
+  // end collect
+  heap->collect_active = false;
+  char *tmp = heap->to_space;
+  heap->to_space = heap->from_space;
+  heap->from_space = tmp;
+
+  gc_stats()->out_of_budget_scans++;
 }
 
 static size_t resolve_obj_size(const StellaObjectDescriptor *const descr) {
@@ -106,11 +133,28 @@ static size_t resolve_obj_size(const StellaObjectDescriptor *const descr) {
   return round_size;
 }
 
+static StellaValue alloc_from_space(Heap *heap,
+                                    const StellaObjectDescriptor *const descr,
+                                    size_t size);
+static StellaValue alloc_to_space(Heap *heap,
+                                  const StellaObjectDescriptor *const descr,
+                                  size_t size);
+
+static bool will_heap_overflow(const Heap *heap, size_t size_to_be_added) {
+  return gc_config()->collect_start_threshold == 1.0
+             ? heap->next + size_to_be_added >= heap->limit
+             : heap->next + size_to_be_added + (heap->end - heap->limit) >=
+                   (size_t)((double)heap->end *
+                            gc_config()->collect_start_threshold);
+}
+
 static StellaValue alloc_to_space(Heap *heap,
                                   const StellaObjectDescriptor *const descr,
                                   size_t size) {
-  if (heap->next >= heap->limit - size) {
-    handle_oom(heap, size);
+  if (will_heap_overflow(heap, size)) {
+    // если места нет - завершаем сборку и выделяем объект в from-space
+    finish_collect(heap);
+    return alloc_from_space(heap, descr, size);
   }
   heap->limit -= size;
   StellaValue res = (StellaValue)(heap->to_space + heap->limit);
@@ -121,14 +165,8 @@ static StellaValue alloc_to_space(Heap *heap,
 static StellaValue alloc_from_space(Heap *heap,
                                     const StellaObjectDescriptor *const descr,
                                     size_t size) {
-  bool do_start_collect =
-      gc_config()->collect_start_threshold == 1.0
-          ? heap->next + size >= heap->limit
-          : heap->next + size + (heap->end - heap->limit) >=
-                (size_t)((double)heap->end *
-                         gc_config()->collect_start_threshold);
-
-  if (do_start_collect) {
+  if (will_heap_overflow(heap, size)) {
+    // если места нет - начинаем сборку и выделяем объект в конце to-space
     start_collect(heap);
     return alloc_to_space(heap, descr, size);
   } else {
@@ -169,16 +207,7 @@ void heap_step_collect(Heap *heap, uint8_t steps_count) {
   }
 
   while (steps_count-- > 0 && heap->scan < heap->next) {
-    StellaValue obj = (StellaValue)(heap->to_space + heap->scan);
-
-    for (size_t i = 0; i < obj->descriptor->managed_count; i++) {
-      StellaValue field = obj->fields[i].managed;
-      obj->fields[i].managed = perform_forward(heap, field);
-    }
-    // TODO get rid of size recalculation?
-    size_t size = rounded_size(object_size(obj->descriptor));
-    heap->scan += size;
-    gc_stats()->collection_steps++;
+    perform_step_collect(heap);
   }
   if (heap->scan == heap->next) {
     // end collect

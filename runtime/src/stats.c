@@ -6,6 +6,7 @@
 void stats_init(GcStats *stats) {
   stats->allocs = 0;
   stats->collection_steps = 0;
+  stats->collections = 0;
   stats->dynamic_root_depth = 0;
   stats->failed_allocations = 0;
   stats->managed_reads = 0;
@@ -19,6 +20,7 @@ void stats_init(GcStats *stats) {
   stats->read_barrier_activations = 0;
   stats->requested_bytes = 0;
   stats->rounded_bytes = 0;
+  stats->out_of_budget_scans = 0;
   stats->heap_size = 0;
 }
 
@@ -33,6 +35,7 @@ void stella_gc_print_statistics(FILE *output) {
   fprintf(output, "requested bytes (with rounding): %zu\n",
           stats->rounded_bytes);
   fprintf(output, "alloc calls: %zu\n", stats->allocs);
+  fprintf(output, "collections: %zu\n", stats->collections);
   fprintf(output, "collection steps: %zu\n", stats->collection_steps);
   fprintf(output, "currently occupied bytes: %zu\n", stats->occupied_bytes);
   fprintf(output, "maximum occupied bytes: %zu\n",
@@ -49,6 +52,7 @@ void stella_gc_print_statistics(FILE *output) {
           stats->maximum_dynamic_root_depth);
   fprintf(output, "permanent roots count: %zu\n", stats->permanent_root_count);
   fprintf(output, "failed allocations: %zu\n", stats->failed_allocations);
+  fprintf(output, "out of budget scans: %zu\n", stats->out_of_budget_scans);
   fprintf(output, "current heap size: %zu\n", stats->heap_size);
 }
 
