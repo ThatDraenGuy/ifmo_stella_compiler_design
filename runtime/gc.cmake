@@ -1,4 +1,4 @@
-project(stella_compiler_runtime_gc C)
+project(stellac_runtime_gc C)
 
 set(GC_LIB ${PROJECT_NAME}_lib)
 set(GC_LIB ${GC_LIB} PARENT_SCOPE)

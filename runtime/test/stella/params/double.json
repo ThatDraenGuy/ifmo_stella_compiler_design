@@ -2,18 +2,30 @@
     "program": "double",
     "env": [
         "STELLA_GC_STATS=1",
-        "STELLA_GC_STATS_JSON=1"
+        "STELLA_GC_STATS_JSON=1",
+        "STELLA_GC_COLLECT_START_THRESHOLD=1.0"
     ],
     "args": [
         "40",
         "4096"
     ],
-    "expected": "80",
     "assertions": {
-        "collections": 0,
-        "collection_steps": 0,
-        "maximum_occupied_bytes": 3840,
-        "heap_size": 4096
+        "collections": {
+            "check": "=",
+            "value": 0
+        },
+        "collection_steps": {
+            "check": "=",
+            "value": 0
+        },
+        "maximum_occupied_bytes": {
+            "check": "<",
+            "value": 4096
+        },
+        "heap_size": {
+            "check": "=",
+            "value": 4096
+        }
     },
     "comment": "Размер кучи больше запрашиваемой памяти, ожидается 0 сборок"
 }

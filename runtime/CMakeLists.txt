@@ -1,12 +1,12 @@
-project(stella_compiler_runtime C)
+include(gc.cmake)
+
+
+project(stellac_runtime C)
 
 set(USER_SRC "examples/double.c" STRING "User's Stella program (trnslated into C)")
 
 set(RUNTIME_APP ${PROJECT_NAME}_app)
 set(RUNTIME_APP ${RUNTIME_APP} PARENT_SCOPE)
-
-include(gc.cmake)
-
 set(STELLA_HEADERS ${CMAKE_CURRENT_LIST_DIR}/include)
 
 file(GLOB_RECURSE RUNTIME_SOURCES ${CMAKE_CURRENT_LIST_DIR}/runtime/**.c)

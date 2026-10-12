@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.27)
-project(stella_compiler C)
+project(stellac C)
 
 set(CMAKE_C_STANDARD 11)
 add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)

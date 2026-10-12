@@ -21,20 +21,35 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+MESSAGE(STATUS "Test stdout: ${output}\nTest stderr: ${stats}\n")
+
+if(status)
+    MESSAGE(FATAL_ERROR "Test executing status: ${status}")
+endif()
+
 string(JSON ASSERTIONS_LEN LENGTH "${JSON_DATA}" assertions)
 math(EXPR ASSERTIONS_LAST_INDEX "${ASSERTIONS_LEN} - 1")
 if(ASSERTIONS_LEN GREATER 0)
     foreach(i RANGE ${ASSERTIONS_LAST_INDEX})
         string(JSON KEY MEMBER ${JSON_DATA} assertions ${i})
-        string(JSON EXPECTED_VALUE GET "${JSON_DATA}" assertions "${KEY}")
-
+        string(JSON CHECK GET "${JSON_DATA}" assertions "${KEY}" check)
+        string(JSON EXPECTED_VALUE GET "${JSON_DATA}" assertions "${KEY}" value)
         string(JSON ACTUAL_VALUE GET "${stats}" "${KEY}")
-        if (NOT ACTUAL_VALUE STREQUAL EXPECTED_VALUE)
-            MESSAGE(FATAL_ERROR "Test assertion failed for key \"${KEY}\". Expected: ${EXPECTED_VALUE}; Actual: ${ACTUAL_VALUE}")
+
+        if (CHECK STREQUAL "=")
+            if (NOT ACTUAL_VALUE STREQUAL EXPECTED_VALUE)
+                MESSAGE(FATAL_ERROR "Test assertion failed for key \"${KEY}\". Expected: ${EXPECTED_VALUE}; Actual: ${ACTUAL_VALUE}")
+            endif()
+        elseif(CHECK STREQUAL "<")
+            if (NOT ACTUAL_VALUE LESS EXPECTED_VALUE)
+                MESSAGE(FATAL_ERROR "Test assertion failed for key \"${KEY}\". Expected: less than ${EXPECTED_VALUE}; Actual: ${ACTUAL_VALUE}")
+            endif()
+        elseif(CHECK STREQUAL ">")
+            if (NOT ACTUAL_VALUE GREATER EXPECTED_VALUE)
+                MESSAGE(FATAL_ERROR "Test assertion failed for key \"${KEY}\". Expected: greater than ${EXPECTED_VALUE}; Actual: ${ACTUAL_VALUE}")
+            endif()
+        else()
+            MESSAGE(FATAL_ERROR "Test assertion failed for key \"${KEY}\". Invalid CHECK: \"${CHECK}\"")
         endif()
     endforeach()
-endif()
-
-if(status)
-    MESSAGE(FATAL_ERROR "Test executing status: ${status}")
 endif()

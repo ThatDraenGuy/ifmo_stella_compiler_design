@@ -1,0 +1,36 @@
+{
+    "program": "double",
+    "env": [
+        "STELLA_GC_STATS=1",
+        "STELLA_GC_STATS_JSON=1",
+        "STELLA_GC_COLLECT_START_THRESHOLD=0.6",
+        "STELLA_GC_COLLECT_STEPS_COUNT=1"
+    ],
+    "args": [
+        "40",
+        "4096"
+    ],
+    "assertions": {
+        "collections": {
+            "check": ">",
+            "value": 1
+        },
+        "collection_steps": {
+            "check": ">",
+            "value": 0
+        },
+        "maximum_occupied_bytes": {
+            "check": "<",
+            "value": 3277
+        },
+        "out_of_budget_scans": {
+            "check": ">",
+            "value": 0
+        },
+        "heap_size": {
+            "check": "=",
+            "value": 4096
+        }
+    },
+    "comment": "Размер кучи больше запрашиваемой памяти, но порог начала цикла сильно меньше. Объём работы на шаге также уменьшен. Ожидается, что произойдёт сканирование сверх бюджета."
+}

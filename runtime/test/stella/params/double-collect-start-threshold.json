@@ -1,0 +1,31 @@
+{
+    "program": "double",
+    "env": [
+        "STELLA_GC_STATS=1",
+        "STELLA_GC_STATS_JSON=1",
+        "STELLA_GC_COLLECT_START_THRESHOLD=0.8"
+    ],
+    "args": [
+        "40",
+        "4096"
+    ],
+    "assertions": {
+        "collections": {
+            "check": "=",
+            "value": 1
+        },
+        "collection_steps": {
+            "check": ">",
+            "value": 0
+        },
+        "maximum_occupied_bytes": {
+            "check": "<",
+            "value": 3277
+        },
+        "heap_size": {
+            "check": "=",
+            "value": 4096
+        }
+    },
+    "comment": "Размер кучи больше запрашиваемой памяти, но порог начала цикла меньше. Сборка начинается до её полного заполнения"
+}
