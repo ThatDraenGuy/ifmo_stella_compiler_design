@@ -96,7 +96,7 @@ def map_result_to_csv(res_and_params: Tuple[int, float, int, ExecResult]) -> Dic
             "collections_count": res.stats["collections"],
             "read_barrier_activations_count": res.stats["read_barrier_activations"],
             "max_occupied_bytes": res.stats["maximum_occupied_bytes"],
-            "exec_time": str(res.exec_time),
+            "exec_time (ms)": "{:.4f}".format(res.exec_time * 1000),
             "failure_reason": ""
         }
     else:
@@ -107,8 +107,8 @@ def map_result_to_csv(res_and_params: Tuple[int, float, int, ExecResult]) -> Dic
             "collections_count": "",
             "read_barrier_activations_count": "",
             "max_occupied_bytes": "",
-            "exec_time": str(res.exec_time),
-            "failure_reason": str(res.failure_reason)
+            "exec_time (ms)": "{:.4f}".format(res.exec_time * 1000),
+            "failure_reason": str(res.failure_reason).replace("\n", "")
         }
 
 def run_and_record():
