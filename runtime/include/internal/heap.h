@@ -13,6 +13,9 @@ typedef struct Heap {
   char *to_space;
   char *from_space;
   bool collect_active;
+  // поля ниже нужны для вывода состояния кучи
+  size_t old_next;
+  size_t old_limit;
 } Heap;
 
 void heap_init(Heap *heap, size_t start_bytes);

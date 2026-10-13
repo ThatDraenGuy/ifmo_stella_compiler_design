@@ -9,38 +9,6 @@
 
 #define GC_WORD_NULL 0
 
-static bool add_overflows(size_t left, size_t right) {
-  return left > SIZE_MAX - right;
-}
-
-static bool multiply_overflows(size_t left, size_t right) {
-  return right != 0 && left > SIZE_MAX / right;
-}
-
-static size_t object_size(const StellaObjectDescriptor *descriptor) {
-  if (multiply_overflows(descriptor->slot_capacity, sizeof(StellaSlot))) {
-    stella_abi_violation("object slot capacity overflows size_t");
-  }
-  size_t slots = descriptor->slot_capacity * sizeof(StellaSlot);
-  if (add_overflows(sizeof(StellaObject), slots)) {
-    stella_abi_violation("object size overflows size_t");
-  }
-  return sizeof(StellaObject) + slots;
-}
-
-static size_t rounded_size(size_t size) {
-  size_t alignment = _Alignof(max_align_t);
-  size_t remainder = size % alignment;
-  if (remainder == 0) {
-    return size;
-  }
-  size_t padding = alignment - remainder;
-  if (add_overflows(size, padding)) {
-    stella_abi_violation("aligned object size overflows size_t");
-  }
-  return size + padding;
-}
-
 static bool heap_is_ptr_from_space(const Heap *heap, void *ptr) {
   char *cptr = (char *)ptr;
   return cptr >= heap->from_space && cptr < (heap->from_space + heap->end);
@@ -99,6 +67,9 @@ StellaValue heap_forward(Heap *heap, StellaValue obj) {
 }
 
 static void start_collect(Heap *heap) {
+  heap->old_next = heap->next;
+  heap->old_limit = heap->limit;
+
   heap->collect_active = true;
   heap->scan = 0;
   heap->next = 0;
@@ -121,6 +92,8 @@ static void finish_collect(Heap *heap) {
   char *tmp = heap->to_space;
   heap->to_space = heap->from_space;
   heap->from_space = tmp;
+  heap->old_next = 0;
+  heap->old_limit = heap->end;
 
   gc_stats()->out_of_budget_scans++;
 }
@@ -238,6 +211,8 @@ void heap_init(Heap *heap, size_t start_bytes) {
   heap->next = 0;
   heap->limit = start_bytes;
   heap->end = start_bytes;
+  heap->old_next = 0;
+  heap->old_limit = start_bytes;
   heap->collect_active = false;
   heap->to_space = malloc(start_bytes);
   heap->from_space = malloc(start_bytes);

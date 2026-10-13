@@ -1,5 +1,6 @@
 #include "internal/context.h"
 #include "internal/roots.h"
+#include "internal/utils.h"
 #include <internal/stats.h>
 #include <stella/gc.h>
 
@@ -101,6 +102,12 @@ void stella_gc_print_roots(FILE *output) {
   });
 }
 
+static void print_obj(FILE *output, StellaValue obj, size_t idx, size_t size) {
+  fprintf(output, "idx: %zu; size: %zu; gc word: %zu; descr: %s\n", idx, size,
+          obj->gc_word, obj->descriptor->debug_name);
+  return;
+}
+
 void stella_gc_print_state(FILE *output) {
   if (output == NULL) {
     stella_abi_violation("null statistics output stream");
@@ -114,4 +121,58 @@ void stella_gc_print_state(FILE *output) {
   fprintf(output, "next: %zu\n", heap->next);
   fprintf(output, "lim:  %zu\n", heap->limit);
   fprintf(output, "end:  %zu\n", heap->end);
+
+  if (heap->collect_active) {
+    fprintf(output, "FROM SPACE:\n");
+    size_t i = 0;
+    while (i < heap->old_next) {
+      StellaValue obj = (StellaValue)(heap->from_space + i);
+      size_t size = rounded_size(object_size(obj->descriptor));
+      print_obj(output, obj, i, size);
+      i += size;
+    }
+
+    i = heap->old_limit;
+    while (i < heap->end) {
+      StellaValue obj = (StellaValue)(heap->from_space + i);
+      size_t size = rounded_size(object_size(obj->descriptor));
+      print_obj(output, obj, i, size);
+      i += size;
+    }
+
+    fprintf(output, "\nTO SPACE:\n");
+    i = 0;
+    while (i < heap->next) {
+      StellaValue obj = (StellaValue)(heap->to_space + i);
+      size_t size = rounded_size(object_size(obj->descriptor));
+      print_obj(output, obj, i, size);
+      i += size;
+    }
+
+    i = heap->limit;
+    while (i < heap->end) {
+      StellaValue obj = (StellaValue)(heap->to_space + i);
+      size_t size = rounded_size(object_size(obj->descriptor));
+      print_obj(output, obj, i, size);
+      i += size;
+    }
+
+  } else {
+    fprintf(output, "FROM SPACE:\n");
+    size_t i = 0;
+    while (i < heap->next) {
+      StellaValue obj = (StellaValue)(heap->from_space + i);
+      size_t size = rounded_size(object_size(obj->descriptor));
+      print_obj(output, obj, i, size);
+      i += size;
+    }
+
+    i = heap->limit;
+    while (i < heap->end) {
+      StellaValue obj = (StellaValue)(heap->from_space + i);
+      size_t size = rounded_size(object_size(obj->descriptor));
+      print_obj(output, obj, i, size);
+      i += size;
+    }
+  }
 }
