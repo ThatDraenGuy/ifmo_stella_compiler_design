@@ -79,8 +79,8 @@ def get_args(program_id: str, heap_size: int) -> List[str]:
 
 def run_program_params(program_id: str) -> List[Tuple[int, float, int, ExecResult]]:
     build_program(program_id)
-    params = product(steps_range, threshold_range, bytes_range)
-    return [(tuple[0], tuple[1], tuple[2], run_program_times(program_id, get_env(tuple[0], tuple[1]), get_args(program_id, tuple[2]))) for tuple in params]
+    params = product(bytes_range, threshold_range, steps_range)
+    return [(tuple[0], tuple[1], tuple[2], run_program_times(program_id, get_env(tuple[2], tuple[1]), get_args(program_id, tuple[0]))) for tuple in params]
 
 def run_all_programs() -> Dict[str, List[Tuple[int, float, int, ExecResult]]]:
     return {id: run_program_params(id) for id in programs.keys()}
@@ -90,9 +90,9 @@ def map_result_to_csv(res_and_params: Tuple[int, float, int, ExecResult]) -> Dic
     res = res_and_params[3]
     if res.return_code == 0:
         return {
-            "heap_size": str(res_and_params[2]),
+            "heap_size": str(res_and_params[0]),
             "start_collect_threshold": str(res_and_params[1]),
-            "collection_steps_count": str(res_and_params[0]),
+            "collection_steps_count": str(res_and_params[2]),
             "collections_count": res.stats["collections"],
             "read_barrier_activations_count": res.stats["read_barrier_activations"],
             "max_occupied_bytes": res.stats["maximum_occupied_bytes"],
@@ -101,9 +101,9 @@ def map_result_to_csv(res_and_params: Tuple[int, float, int, ExecResult]) -> Dic
         }
     else:
         return {
-            "heap_size": str(res_and_params[2]),
+            "heap_size": str(res_and_params[0]),
             "start_collect_threshold": str(res_and_params[1]),
-            "collection_steps_count": str(res_and_params[0]),
+            "collection_steps_count": str(res_and_params[2]),
             "collections_count": "",
             "read_barrier_activations_count": "",
             "max_occupied_bytes": "",

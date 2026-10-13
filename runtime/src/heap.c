@@ -2,6 +2,7 @@
 #include <internal/heap.h>
 #include <internal/utils.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <stella/gc.h>
 #include <string.h>
@@ -132,13 +133,6 @@ static size_t resolve_obj_size(const StellaObjectDescriptor *const descr) {
   return round_size;
 }
 
-static StellaValue alloc_from_space(Heap *heap,
-                                    const StellaObjectDescriptor *const descr,
-                                    size_t size);
-static StellaValue alloc_to_space(Heap *heap,
-                                  const StellaObjectDescriptor *const descr,
-                                  size_t size);
-
 static bool will_heap_overflow(const Heap *heap, size_t size_to_be_added) {
   return gc_config()->collect_start_threshold == 1.0
              ? heap->next + size_to_be_added >= heap->limit
@@ -147,13 +141,29 @@ static bool will_heap_overflow(const Heap *heap, size_t size_to_be_added) {
                             gc_config()->collect_start_threshold);
 }
 
+// аллокация сразу после сборки (избегаем вечного цикла и stack-overflow из-за
+// alloc_to_space <-> alloc_from_space);
+// не учитываем collect_start_threshold;
+// если места физически нету - OOM (сборка только что прошла, мусора в куче нет)
+static StellaValue
+alloc_from_space_strict(Heap *heap, const StellaObjectDescriptor *const descr,
+                        size_t size) {
+  if (heap->next + size >= heap->limit) {
+    handle_oom(heap, size);
+  }
+  StellaValue res = (StellaValue)(heap->from_space + heap->next);
+  res->gc_word = GC_WORD_NULL;
+  heap->next += size;
+  return res;
+}
+
 static StellaValue alloc_to_space(Heap *heap,
                                   const StellaObjectDescriptor *const descr,
                                   size_t size) {
   if (will_heap_overflow(heap, size)) {
     // если места нет - завершаем сборку и выделяем объект в from-space
     finish_collect(heap);
-    return alloc_from_space(heap, descr, size);
+    return alloc_from_space_strict(heap, descr, size);
   }
   heap->limit -= size;
   StellaValue res = (StellaValue)(heap->to_space + heap->limit);
