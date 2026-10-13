@@ -1,0 +1,13 @@
+// Программа заполняет список, который "сразу" становится мусором.
+// Так делается несколько раз
+language core;
+extend with #lists, #let-bindings, #unit-type, #sequencing;
+
+fn fill(size : Nat) -> Unit {
+    return let l = Nat::rec(size, List::nil as List[Nat], |i, list| List::cons(i, list)) in
+    Unit::unit;
+}
+
+fn main(n : Nat) -> Unit {
+    return fill(n); fill(n); fill(n); fill(n); fill(n); fill(n); Unit::unit;
+}
