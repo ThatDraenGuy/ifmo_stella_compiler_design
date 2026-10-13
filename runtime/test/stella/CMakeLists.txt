@@ -13,7 +13,7 @@ foreach(TEST_ST_SOURCE ${TEST_ST_SOURCES})
     set(TEST_C_SOURCE ${TESTS_WORKING_DIR}/${TEST_C_NAME})
 
     execute_process(
-        COMMAND docker run -i  fizruk/stella compile /dev/stdin -o /dev/stdout
+        COMMAND ${DOCKER} run -i  fizruk/stella compile /dev/stdin -o /dev/stdout
         WORKING_DIRECTORY ${TESTS_WORKING_DIR}
         INPUT_FILE ${TEST_ST_SOURCE}
         OUTPUT_FILE ${TEST_C_SOURCE}

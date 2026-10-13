@@ -129,7 +129,9 @@ StellaValue stella_gc_read_managed(StellaValue *object_root, size_t index) {
   StellaValue forwarded = heap_forward(gc_heap(), field);
   (*object_root)->fields[index].managed = forwarded;
   gc_stats()->managed_reads++;
-  gc_stats()->read_barrier_activations++;
+  if (field != forwarded) {
+    gc_stats()->read_barrier_activations++;
+  }
   return forwarded;
 }
 

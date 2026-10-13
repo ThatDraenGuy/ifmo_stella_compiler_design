@@ -1,0 +1,35 @@
+{
+    "program": "garbage",
+    "env": [
+        "STELLA_GC_STATS=1",
+        "STELLA_GC_STATS_JSON=1",
+        "STELLA_GC_COLLECT_START_THRESHOLD=1.0"
+    ],
+    "args": [
+        "30",
+        "4096"
+    ],
+    "assertions": {
+        "collections": {
+            "check": ">",
+            "value": 0
+        },
+        "collection_steps": {
+            "check": ">",
+            "value": 0
+        },
+        "maximum_occupied_bytes": {
+            "check": "<",
+            "value": 4096
+        },
+        "requested_bytes": {
+            "check": ">",
+            "value": 12288
+        },
+        "heap_size": {
+            "check": "=",
+            "value": 4096
+        }
+    },
+    "comment": "Общее число запрашиваемых байтов больше размера кучи в 3 раза."
+}

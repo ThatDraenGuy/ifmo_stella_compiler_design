@@ -45,7 +45,7 @@ void gc_config_init_env(GcConfig *config) {
   {
     char *json_stats_str = getenv(JSON_STATS);
     if (json_stats_str == NULL) {
-      config->collect_steps_count = JSON_STATS_DEF;
+      config->json_stats = JSON_STATS_DEF;
     } else {
       int json_stats = atoi(json_stats_str);
       if (json_stats != 0 && json_stats != 1) {
