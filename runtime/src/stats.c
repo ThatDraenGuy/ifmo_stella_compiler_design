@@ -1,4 +1,5 @@
 #include "internal/context.h"
+#include "internal/errors.h"
 #include "internal/roots.h"
 #include "internal/utils.h"
 #include <internal/stats.h>
@@ -27,7 +28,8 @@ void stats_init(GcStats *stats) {
 void stella_gc_print_statistics(FILE *output) {
   GcStats *stats = gc_stats();
   if (output == NULL) {
-    stella_abi_violation("null statistics output stream");
+    stella_abi_violation(ERR_NULL " - "
+                                  "null statistics output stream");
   }
 
   if (gc_config()->json_stats) {
@@ -88,7 +90,8 @@ void stella_gc_print_roots(FILE *output) {
   RootVec *roots = gc_roots();
   RootVec *perma_roots = gc_perma_roots();
   if (output == NULL) {
-    stella_abi_violation("null statistics output stream");
+    stella_abi_violation(ERR_NULL " - "
+                                  "null statistics output stream");
   }
 
   fprintf(output, "GC roots:\nPermanent:\n");
@@ -110,7 +113,8 @@ static void print_obj(FILE *output, StellaValue obj, size_t idx, size_t size) {
 
 void stella_gc_print_state(FILE *output) {
   if (output == NULL) {
-    stella_abi_violation("null statistics output stream");
+    stella_abi_violation(ERR_NULL " - "
+                                  "null statistics output stream");
   }
 
   Heap *heap = gc_heap();

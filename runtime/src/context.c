@@ -1,5 +1,6 @@
 #include "internal/context.h"
 #include "internal/config.h"
+#include "internal/errors.h"
 #include "internal/roots.h"
 #include <stdlib.h>
 #include <stella/gc.h>
@@ -16,16 +17,20 @@ static GcCtx *CTX = NULL;
 
 void stella_gc_init(const StellaGcConfig *config) {
   if (CTX != NULL) {
-    stella_abi_violation("collector initialised while active");
+    stella_abi_violation(ERR_GC_IS_ON " - "
+                                      "collector initialised while active");
   }
   if (config == NULL) {
-    stella_abi_violation("null collector configuration");
+    stella_abi_violation(ERR_CONFIG " - "
+                                    "null collector configuration");
   }
   if (config->abi_version != STELLA_C_GC_ABI_VERSION) {
-    stella_abi_violation("incompatible collector ABI version");
+    stella_abi_violation(ERR_ABI_VER " - "
+                                     "incompatible collector ABI version");
   }
   if (config->max_heap_bytes == 0) {
-    stella_abi_violation("zero maximum heap size");
+    stella_abi_violation(ERR_CONFIG " - "
+                                    "zero maximum heap size");
   }
 
   CTX = malloc(sizeof(GcCtx));
@@ -42,11 +47,9 @@ void stella_gc_init(const StellaGcConfig *config) {
 
 void stella_gc_shutdown(void) {
   if (CTX == NULL) {
-    stella_abi_violation("shutdown called for non-initialised collector");
-  }
-  if (roots_size(&CTX->roots) != 0) {
-    stella_abi_violation(
-        "shutdown called with roots still present in the stack");
+    stella_abi_violation(ERR_GC_IS_OFF
+                         " - "
+                         "shutdown called for non-initialised collector");
   }
 
   roots_destroy(&CTX->roots);
@@ -58,7 +61,9 @@ void stella_gc_shutdown(void) {
 
 static inline GcCtx *gc_ctx() {
   if (CTX == NULL) {
-    stella_abi_violation("Attempt to access GC while it is not active");
+    stella_abi_violation(ERR_GC_IS_OFF
+                         " - "
+                         "attempt to access GC while it is not active");
   }
   return CTX;
 }

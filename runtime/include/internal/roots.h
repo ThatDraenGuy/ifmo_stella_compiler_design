@@ -1,8 +1,8 @@
 #ifndef STELLA_GC_ROOTS_H
 #define STELLA_GC_ROOTS_H
 
-#include "stella/runtime.h"
 #include <stdbool.h>
+#include <stella/runtime.h>
 
 typedef StellaValue *StellaRoot;
 

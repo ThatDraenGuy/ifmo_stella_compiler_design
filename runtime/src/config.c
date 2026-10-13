@@ -1,4 +1,5 @@
 #include "internal/config.h"
+#include "internal/errors.h"
 #include <stdlib.h>
 #include <stella/runtime.h>
 
@@ -19,7 +20,8 @@ void gc_config_init_env(GcConfig *config) {
     } else {
       int collect_steps_count = atoi(collect_steps_count_str);
       if (collect_steps_count <= 0) {
-        stella_abi_violation(COLLECT_STEPS_COUNT
+        stella_abi_violation(ERR_CONFIG
+                             " - " COLLECT_STEPS_COUNT
                              " is set to invalid value; expected a positive "
                              "integer number of bytes");
       }
@@ -34,7 +36,8 @@ void gc_config_init_env(GcConfig *config) {
     } else {
       double collect_start_threshold = atof(collect_start_threshold_str);
       if (collect_start_threshold <= 0 || collect_start_threshold > 1.0) {
-        stella_abi_violation(COLLECT_START_THRESHOLD
+        stella_abi_violation(ERR_CONFIG
+                             " - " COLLECT_START_THRESHOLD
                              " is set to invalid value; expected a floating "
                              "number between 0 and 1");
       }
@@ -49,7 +52,8 @@ void gc_config_init_env(GcConfig *config) {
     } else {
       int json_stats = atoi(json_stats_str);
       if (json_stats != 0 && json_stats != 1) {
-        stella_abi_violation(JSON_STATS
+        stella_abi_violation(ERR_CONFIG
+                             " - " JSON_STATS
                              " is set to invalid value; expected a 0 or 1 ");
       }
       config->json_stats = json_stats == 1;

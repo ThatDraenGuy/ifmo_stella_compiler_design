@@ -1,4 +1,5 @@
 #include "internal/context.h"
+#include "internal/errors.h"
 #include <stella/gc.h>
 
 static bool add_overflows(size_t left, size_t right) {
@@ -7,67 +8,91 @@ static bool add_overflows(size_t left, size_t right) {
 
 static void validate_descriptor(const StellaObjectDescriptor *descriptor) {
   if (descriptor == NULL) {
-    stella_abi_violation("null object descriptor");
+    stella_abi_violation(ERR_NULL " - "
+                                  "null object descriptor");
   }
   if (descriptor->abi_version != STELLA_C_GC_ABI_VERSION) {
-    stella_abi_violation("incompatible descriptor ABI version");
+    stella_abi_violation(ERR_ABI_VER " - "
+                                     "incompatible descriptor ABI version");
   }
   if (descriptor->kind < STELLA_OBJECT_DATA ||
       descriptor->kind > STELLA_OBJECT_INDIRECTION) {
-    stella_abi_violation("unknown object kind");
+    stella_abi_violation(ERR_INVALID_DESCR " - "
+                                           "unknown object kind");
   }
   uint32_t known_flags = STELLA_DESCRIPTOR_STATIC | STELLA_DESCRIPTOR_UPDATABLE;
   if ((descriptor->flags & ~known_flags) != 0) {
-    stella_abi_violation("unknown descriptor flag");
+    stella_abi_violation(ERR_INVALID_DESCR " - "
+                                           "unknown descriptor flag");
   }
   if ((descriptor->flags & STELLA_DESCRIPTOR_STATIC) != 0 &&
       (descriptor->flags & STELLA_DESCRIPTOR_UPDATABLE) != 0) {
-    stella_abi_violation("static descriptor is marked updatable");
+    stella_abi_violation(ERR_INVALID_DESCR
+                         " - "
+                         "static descriptor is marked updatable");
   }
   if (add_overflows(descriptor->managed_count, descriptor->primitive_count)) {
-    stella_abi_violation("active field count overflows size_t");
+    stella_abi_violation(ERR_INVALID_DESCR
+                         " - "
+                         "active field count overflows size_t");
   }
   if (descriptor->managed_count + descriptor->primitive_count >
       descriptor->slot_capacity) {
-    stella_abi_violation("active fields exceed slot capacity");
+    stella_abi_violation(ERR_INVALID_DESCR
+                         " - "
+                         "active fields exceed slot capacity");
   }
   if ((descriptor->kind == STELLA_OBJECT_CLOSURE ||
        descriptor->kind == STELLA_OBJECT_THUNK) &&
       descriptor->entry_code == NULL) {
-    stella_abi_violation("executable descriptor has no entry code");
+    stella_abi_violation(ERR_INVALID_DESCR
+                         " - "
+                         "executable descriptor has no entry code");
   }
   if ((descriptor->kind == STELLA_OBJECT_DATA ||
        descriptor->kind == STELLA_OBJECT_INDIRECTION) &&
       descriptor->entry_code != NULL) {
-    stella_abi_violation("non-executable descriptor has entry code");
+    stella_abi_violation(ERR_INVALID_DESCR
+                         " - "
+                         "non-executable descriptor has entry code");
   }
   if (descriptor->kind == STELLA_OBJECT_THUNK && descriptor->entry_arity != 0) {
-    stella_abi_violation("thunk descriptor has non-zero entry arity");
+    stella_abi_violation(ERR_INVALID_DESCR
+                         " - "
+                         "thunk descriptor has non-zero entry arity");
   }
   if ((descriptor->kind == STELLA_OBJECT_DATA ||
        descriptor->kind == STELLA_OBJECT_INDIRECTION) &&
       descriptor->entry_arity != 0) {
-    stella_abi_violation("non-executable descriptor has non-zero entry arity");
+    stella_abi_violation(ERR_INVALID_DESCR
+                         " - "
+                         "non-executable descriptor has non-zero entry arity");
   }
 }
 
 static void validate_object(StellaValue obj) {
   if (obj == NULL) {
-    stella_abi_violation("null object");
+    stella_abi_violation(ERR_NULL " - "
+                                  "null object");
   }
   validate_descriptor(obj->descriptor);
   if ((obj->descriptor->flags & STELLA_DESCRIPTOR_STATIC) == 0 &&
       !heap_owns_obj(gc_heap(), obj)) {
-    stella_abi_violation("heap object is not owned by the collector");
+    stella_abi_violation(ERR_FOREIGN_HEAP_OBJ
+                         " - "
+                         "heap object is not owned by the collector");
   }
 }
 
 static void validate_heap_object(StellaValue obj) {
   if (obj == NULL) {
-    stella_abi_violation("null object");
+    stella_abi_violation(ERR_NULL " - "
+                                  "null object");
   }
   if (!heap_owns_obj(gc_heap(), obj)) {
-    stella_abi_violation("object is not owned by the collector");
+    stella_abi_violation(ERR_NON_HEAP_OBJ
+                         " - "
+                         "object is not owned by the collector");
   }
   validate_descriptor(obj->descriptor);
 }
@@ -75,14 +100,17 @@ static void validate_heap_object(StellaValue obj) {
 static void validate_root(StellaRoot root) {
   if (root == NULL || (!roots_contains(gc_roots(), root) &&
                        !roots_contains(gc_perma_roots(), root))) {
-    stella_abi_violation("Attempt to access unregistered root");
+    stella_abi_violation(ERR_UNREG_ROOT " - "
+                                        "Attempt to access unregistered root");
   }
 }
 
 StellaValue stella_gc_alloc(const StellaObjectDescriptor *descriptor) {
   validate_descriptor(descriptor);
   if ((descriptor->flags & STELLA_DESCRIPTOR_STATIC) != 0) {
-    stella_abi_violation("heap allocation requested with static descriptor");
+    stella_abi_violation(ERR_STATIC_OBJ
+                         " - "
+                         "heap allocation requested with static descriptor");
   }
 
   Heap *heap = gc_heap();
@@ -104,7 +132,9 @@ void stella_object_init_managed(StellaValue object, size_t index,
                                 StellaValue value) {
   validate_heap_object(object);
   if (index >= object->descriptor->managed_count) {
-    stella_abi_violation("managed initialisation index out of range");
+    stella_abi_violation(ERR_OUT_OF_RANGE
+                         " - "
+                         "managed initialisation index out of range");
   }
   object->fields[index].managed = value;
 }
@@ -113,7 +143,9 @@ void stella_object_init_primitive(StellaValue object, size_t index,
                                   StellaPrimitive value) {
   validate_heap_object(object);
   if (index >= object->descriptor->primitive_count) {
-    stella_abi_violation("primitive initialisation index out of range");
+    stella_abi_violation(ERR_OUT_OF_RANGE
+                         " - "
+                         "primitive initialisation index out of range");
   }
   size_t physical = object->descriptor->managed_count + index;
   object->fields[physical].primitive = value;
@@ -123,7 +155,8 @@ StellaValue stella_gc_read_managed(StellaValue *object_root, size_t index) {
   validate_root(object_root);
   validate_object(*object_root);
   if (index >= (*object_root)->descriptor->managed_count) {
-    stella_abi_violation("managed read index out of range");
+    stella_abi_violation(ERR_OUT_OF_RANGE " - "
+                                          "managed read index out of range");
   }
   StellaValue field = ((*object_root)->fields[index].managed);
   StellaValue forwarded = heap_forward(gc_heap(), field);
@@ -141,10 +174,12 @@ void stella_gc_write_managed(StellaValue *object_root, size_t index,
   validate_root(value_root);
   validate_object(*object_root);
   if (((*object_root)->descriptor->flags & STELLA_DESCRIPTOR_STATIC) != 0) {
-    stella_abi_violation("managed write to static object");
+    stella_abi_violation(ERR_STATIC_OBJ " - "
+                                        "managed write to static object");
   }
   if (index >= (*object_root)->descriptor->managed_count) {
-    stella_abi_violation("managed write index out of range");
+    stella_abi_violation(ERR_OUT_OF_RANGE " - "
+                                          "managed write index out of range");
   }
   (*object_root)->fields[index].managed = *value_root;
   gc_stats()->managed_writes++;
@@ -153,7 +188,8 @@ void stella_gc_write_managed(StellaValue *object_root, size_t index,
 StellaPrimitive stella_object_read_primitive(StellaValue object, size_t index) {
   validate_object(object);
   if (index >= object->descriptor->primitive_count) {
-    stella_abi_violation("primitive read index out of range");
+    stella_abi_violation(ERR_OUT_OF_RANGE " - "
+                                          "primitive read index out of range");
   }
   StellaPrimitive res =
       object->fields[object->descriptor->managed_count + index].primitive;
@@ -165,10 +201,12 @@ void stella_object_write_primitive(StellaValue object, size_t index,
                                    StellaPrimitive value) {
   validate_object(object);
   if ((object->descriptor->flags & STELLA_DESCRIPTOR_STATIC) != 0) {
-    stella_abi_violation("primitive write to static object");
+    stella_abi_violation(ERR_STATIC_OBJ " - "
+                                        "primitive write to static object");
   }
   if (index >= object->descriptor->primitive_count) {
-    stella_abi_violation("primitive write index out of range");
+    stella_abi_violation(ERR_OUT_OF_RANGE " - "
+                                          "primitive write index out of range");
   }
   object->fields[object->descriptor->managed_count + index].primitive = value;
   gc_stats()->primitive_writes++;
@@ -184,16 +222,24 @@ void stella_gc_update_object(StellaValue *object_root,
   validate_descriptor(new_descriptor);
   if ((old_descriptor->flags & STELLA_DESCRIPTOR_UPDATABLE) == 0 ||
       (new_descriptor->flags & STELLA_DESCRIPTOR_STATIC) != 0) {
-    stella_abi_violation("incompatible object-layout update flags");
+    stella_abi_violation(ERR_INVALID_UPD
+                         " - "
+                         "incompatible object-layout update flags");
   }
   if (old_descriptor->slot_capacity != new_descriptor->slot_capacity) {
-    stella_abi_violation("object-layout update changes slot capacity");
+    stella_abi_violation(ERR_INVALID_UPD
+                         " - "
+                         "object-layout update changes slot capacity");
   }
   if (new_descriptor->managed_count != 0 && new_managed_roots == NULL) {
-    stella_abi_violation("missing managed values for object-layout update");
+    stella_abi_violation(ERR_INVALID_UPD
+                         " - "
+                         "missing managed values for object-layout update");
   }
   if (new_descriptor->primitive_count != 0 && new_primitives == NULL) {
-    stella_abi_violation("missing primitive values for object-layout update");
+    stella_abi_violation(ERR_INVALID_UPD
+                         " - "
+                         "missing primitive values for object-layout update");
   }
   for (size_t i = 0; i < new_descriptor->managed_count; ++i) {
     validate_root(new_managed_roots[i]);

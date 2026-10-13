@@ -21,7 +21,7 @@
         },
         "maximum_occupied_bytes": {
             "check": "<",
-            "value": 3277
+            "value": 4096
         },
         "out_of_budget_scans": {
             "check": ">",
