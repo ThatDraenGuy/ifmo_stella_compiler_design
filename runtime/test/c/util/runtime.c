@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 _Noreturn void stella_gc_out_of_memory(size_t requested_bytes) {
-  if (oom_expected) {
+  if (OOM_EXPECTED) {
     exit(EXIT_SUCCESS);
   }
   fprintf(stderr, "Assertions failed: unexpected OOM with %zu bytes\n",
@@ -30,16 +30,16 @@ static bool starts_with(const char *const check, const char *const str) {
 }
 
 _Noreturn void stella_abi_violation(const char *message) {
-  if (expected_err == NULL) {
+  if (EXPECTED_ERR == NULL) {
     fprintf(stderr,
             "Assertions failed: unexpected ABI violation with msg: %s\n",
             message);
     exit(EXIT_FAILURE);
-  } else if (!starts_with(expected_err, message)) {
+  } else if (!starts_with(EXPECTED_ERR, message)) {
     fprintf(stderr,
             "Assertions failed: wrong ABI violation error code. Expected: %s; "
             "actual msg: %s\n",
-            expected_err, message);
+            EXPECTED_ERR, message);
     exit(EXIT_FAILURE);
   }
 

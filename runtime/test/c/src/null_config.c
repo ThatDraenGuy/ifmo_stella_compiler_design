@@ -3,7 +3,8 @@
 #include <stella/gc.h>
 
 int main(int argc, char *argv[]) {
-  expected_err = ERR_NULL;
+  EXPECTED_ERR = ERR_NULL;
+
   stella_gc_init(NULL);
-  return 0;
+  return exit_with_assertions();
 }

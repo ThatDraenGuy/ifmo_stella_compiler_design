@@ -1,5 +1,4 @@
 set(PROJECT_TEST ${PROJECT_NAME}_test_c)
-set(PROJECT_TEST_UTIL_LIB ${PROJECT_TEST}_lib)
 
 file(GLOB_RECURSE TEST_C_SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/**.c)
 
@@ -7,19 +6,15 @@ file(GLOB_RECURSE TEST_C_SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/**.c)
 file(GLOB_RECURSE TEST_UTIL_SOURCES ${CMAKE_CURRENT_LIST_DIR}/util/**.c)
 set(TEST_UTIL_HEADERS ${CMAKE_CURRENT_LIST_DIR}/include)
 
-add_library(${PROJECT_TEST_UTIL_LIB} ${TEST_UTIL_SOURCES})
-target_include_directories(${PROJECT_TEST_UTIL_LIB} PRIVATE ${STELLA_HEADERS} ${TEST_UTIL_HEADERS})
-# target_link_libraries(${PROJECT_TEST_UTIL_LIB} PRIVATE ${GC_LIB} )
-
 
 foreach(TEST_C_SOURCE ${TEST_C_SOURCES})
     get_filename_component(TEST_NAME ${TEST_C_SOURCE} NAME_WE)
 
     set(TEST_ID ${PROJECT_TEST}_${TEST_NAME})
 
-    add_executable(${TEST_ID} ${TEST_C_SOURCE})
+    add_executable(${TEST_ID} ${TEST_C_SOURCE} ${TEST_UTIL_SOURCES})
     target_include_directories(${TEST_ID} PRIVATE ${STELLA_HEADERS} ${TEST_UTIL_HEADERS})
-    target_link_libraries(${TEST_ID} PRIVATE ${PROJECT_TEST_UTIL_LIB} ${GC_LIB})
+    target_link_libraries(${TEST_ID} PRIVATE ${GC_LIB})
 
     add_test(
         NAME ${TEST_NAME}

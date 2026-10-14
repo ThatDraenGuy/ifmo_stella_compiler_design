@@ -108,8 +108,8 @@ static size_t resolve_obj_size(const StellaObjectDescriptor *const descr) {
 
 static bool will_heap_overflow(const Heap *heap, size_t size_to_be_added) {
   return gc_config()->collect_start_threshold == 1.0
-             ? heap->next + size_to_be_added >= heap->limit
-             : heap->next + size_to_be_added + (heap->end - heap->limit) >=
+             ? heap->next + size_to_be_added > heap->limit
+             : heap->next + size_to_be_added + (heap->end - heap->limit) >
                    (size_t)((double)heap->end *
                             gc_config()->collect_start_threshold);
 }
@@ -121,7 +121,7 @@ static bool will_heap_overflow(const Heap *heap, size_t size_to_be_added) {
 static StellaValue
 alloc_from_space_strict(Heap *heap, const StellaObjectDescriptor *const descr,
                         size_t size) {
-  if (heap->next + size >= heap->limit) {
+  if (heap->next + size > heap->limit) {
     handle_oom(heap, size);
   }
   StellaValue res = (StellaValue)(heap->from_space + heap->next);

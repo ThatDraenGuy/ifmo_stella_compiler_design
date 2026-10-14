@@ -29,3 +29,14 @@ const StellaObjectDescriptor stella_nat_succ_descriptor = {
     .slot_capacity = 1,
     .entry_code = NULL,
     .debug_name = "Nat::succ"};
+
+const StellaObjectDescriptor stella_blank_descriptor = {
+    .abi_version = STELLA_C_GC_ABI_VERSION,
+    .kind = STELLA_OBJECT_DATA,
+    .flags = 0,
+    .entry_arity = 0,
+    .managed_count = 0,
+    .primitive_count = 0,
+    .slot_capacity = 0,
+    .entry_code = NULL,
+    .debug_name = "Blank"};

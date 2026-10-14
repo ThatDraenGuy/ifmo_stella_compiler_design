@@ -21,8 +21,8 @@ void stella_gc_init(const StellaGcConfig *config) {
                                       "collector initialised while active");
   }
   if (config == NULL) {
-    stella_abi_violation(ERR_CONFIG " - "
-                                    "null collector configuration");
+    stella_abi_violation(ERR_NULL " - "
+                                  "null collector configuration");
   }
   if (config->abi_version != STELLA_C_GC_ABI_VERSION) {
     stella_abi_violation(ERR_ABI_VER " - "
