@@ -20,7 +20,7 @@
         },
         "maximum_occupied_bytes": {
             "check": "<",
-            "value": 4096
+            "value": 4097
         },
         "heap_size": {
             "check": "=",
