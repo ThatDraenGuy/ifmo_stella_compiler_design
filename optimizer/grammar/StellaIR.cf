@@ -1,0 +1,97 @@
+-- Stella IR v1 syntax; see ../ir/README.md for the student contract.
+-- LBNF notation and generated ASTs follow the BNFC LBNF reference.
+-- Decimal and JsonString retain their spelling: decoding checks are separate.
+entrypoints Unit;
+UUnit. Unit ::= "stella-ir" Decimal Form JsonString ";" [Declaration];
+FCfg. Form ::= "cfg";
+FSsa. Form ::= "ssa";
+FFunctional. Form ::= "functional";
+DExport. Declaration ::= "export" [CallableName] ";";
+DLayout. Declaration ::= "layout" LayoutName "fields" Types "capacity" Decimal
+                        "updatable" Boolean "entry" Entry ";";
+DFrame. Declaration ::= "frame" FrameName "saved" Types "result" Type
+                       "target" CallableName ";";
+DFunction. Declaration ::= "function" CallableName Parameters "->" Type "{" Body "}";
+DRoutine. Declaration ::= "routine" CallableName Parameters "{" Body "}";
+ENone. Entry ::= "none";
+ECallable. Entry ::= CallableName;
+BGraph. Body ::= Locals "entry" Destination ";" [Block];
+BExpression. Body ::= Expression;
+LNone. Locals ::= ;
+LSome. Locals ::= "locals" Parameters ";";
+BBlock. Block ::= Destination ":" [Instruction] GraphExit;
+IAssign. Instruction ::= Results "=" Rhs ";";
+IPhi. Instruction ::= Binding "=" "phi" "{" Incomings "}" ";";
+INone. Incomings ::= ;
+ISome. Incomings ::= [Incoming];
+IIncoming. Incoming ::= Destination ":" Atom;
+RScalar. Rhs ::= ScalarName Arguments;
+RCall. Rhs ::= "call" CallableName Arguments;
+RRun. Rhs ::= "run" CallableName Arguments;
+RRuntime. Rhs ::= "runtime" JsonString Arguments Attributes;
+GJump. GraphExit ::= "jump" Destination ";";
+GBranch. GraphExit ::= "branch" Atom "," Destination "," Destination ";";
+GCommon. GraphExit ::= CommonExit;
+CReturn. CommonExit ::= "return" Atom ";";
+CTail. CommonExit ::= "tail" CallableName Arguments ";";
+CEnter. CommonExit ::= "tail-entry" Types Arguments ";";
+CResume. CommonExit ::= "resume" Atom ";";
+CFail. CommonExit ::= "fail" JsonString ";";
+ELet. Expression ::= "let" Results "=" Rhs ";" Expression;
+EDo. Expression ::= "do" Rhs ";" Expression;
+EIf. Expression ::= "if" Atom "{" Expression "}" "else" "{" Expression "}";
+ELetrec. Expression ::= "letrec" "{" [LocalFunction] "}" "in" "{" Expression "}";
+EJump. Expression ::= "jump" Destination Arguments ";";
+ECommon. Expression ::= CommonExit;
+LLocal. LocalFunction ::= "local" Destination Parameters "{" Expression "}";
+PEmpty. Parameters ::= "(" ")";
+PList. Parameters ::= "(" [Binding] ")";
+REmpty. Results ::= "[" "]";
+RList. Results ::= "[" [Binding] "]";
+BBinding. Binding ::= ValueName ":" Type;
+AEmpty. Arguments ::= "(" ")";
+AList. Arguments ::= "(" [Atom] ")";
+TEmpty. Types ::= "(" ")";
+TList. Types ::= "(" [Type] ")";
+TI64. Type ::= "i64";
+TBool. Type ::= "bool";
+TRef. Type ::= "ref";
+AVar. Atom ::= ValueName;
+AInt. Atom ::= Decimal;
+ABool. Atom ::= Boolean;
+BTrue. Boolean ::= "true";
+BFalse. Boolean ::= "false";
+SObjectEmpty. Attributes ::= "{" "}";
+SObject. Attributes ::= "{" [Attribute] "}";
+SAttribute. Attribute ::= JsonString ":" StaticValue;
+SString. StaticValue ::= JsonString;
+SBoolean. StaticValue ::= Boolean;
+SAttributes. StaticValue ::= Attributes;
+SArrayEmpty. StaticValue ::= "[" "]";
+SArray. StaticValue ::= "[" [StaticValue] "]";
+rules ScalarName ::= "copy" | "add" | "sub" | "mul" | "div" | "rem"
+                   | "eq" | "ne" | "lt" | "le" | "gt" | "ge"
+                   | "not" | "and" | "or" | "xor";
+terminator Declaration "";
+terminator Instruction "";
+terminator nonempty Block "";
+terminator nonempty LocalFunction "";
+separator nonempty CallableName ",";
+separator nonempty Incoming ",";
+separator nonempty Binding ",";
+separator nonempty Atom ",";
+separator nonempty Type ",";
+separator nonempty Attribute ",";
+separator nonempty StaticValue ",";
+-- One decimal token avoids overlapping signed/unsigned/version tokens.
+token Decimal ('0' | ('-'? ["123456789"] digit*));
+token ValueName ('%' ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"] ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789"]*);
+token CallableName ('@' ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"] ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789"]*);
+token LayoutName ('$' ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"] ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789"]*);
+token FrameName ('!' ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"] ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789"]*);
+token Destination ('^' ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"] ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789"]*);
+-- JSON escape spelling is preserved, including the surrounding quotes.
+token JsonString ('"' ((char - ["\"\\\n\r"]) |
+  ('\\' (["\"\\/bfnrt"] | ('u' ["0123456789abcdefABCDEF"] ["0123456789abcdefABCDEF"]
+    ["0123456789abcdefABCDEF"] ["0123456789abcdefABCDEF"]))))* '"');
+comment "//";

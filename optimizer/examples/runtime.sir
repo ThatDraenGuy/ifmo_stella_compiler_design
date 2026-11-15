@@ -1,0 +1,75 @@
+// Stella IR example: routines, layouts, and frames; see ../README.md.
+stella-ir 1 cfg "stella-ir-base-v1";
+
+export @main;
+
+layout $Box fields (i64) capacity 1 updatable true entry none;
+layout $Result fields (i64) capacity 1 updatable false entry none;
+layout $Worker fields (ref, bool) capacity 2 updatable false entry @apply;
+frame !After saved (ref, bool) result i64 target @after;
+
+function @main(%flag: bool, %n: i64) -> i64 {
+  locals (%box: ref, %worker: ref, %answer: i64);
+  entry ^entry;
+  ^entry:
+    [%box: ref] = runtime "heap.alloc"(%n) {"layout":"Box"};
+    [%worker: ref] = runtime "heap.alloc"(%box, %flag) {"layout":"Worker"};
+    [%answer: i64] = run @start(%worker, %flag);
+    return %answer;
+}
+
+routine @start(%worker: ref, %flag: bool) {
+  locals ();
+  entry ^entry;
+  ^entry:
+    [] = runtime "frame.push"(%worker, %flag) {"frame":"After"};
+    tail-entry (i64)(%worker, 5);
+}
+
+routine @apply(%self: ref, %amount: i64) {
+  locals (%box: ref, %tag: bool, %old: i64, %increment: i64, %new: i64);
+  entry ^entry;
+  ^entry:
+    [%box: ref, %tag: bool] = runtime "heap.unpack"(%self) {"layout":"Worker"};
+    [%old: i64] = runtime "heap.read"(%box) {"layout":"Box","field":"0"};
+    [%increment: i64] = call @bump(%amount);
+    [%new: i64] = add(%old, %increment);
+    [] = runtime "heap.write"(%box, %new) {"layout":"Box","field":"0"};
+    [] = runtime "heap.replace"(%box, %new) {"layout":"Result"};
+    resume %new;
+}
+
+routine @after(%held: ref, %flag: bool, %value: i64) {
+  locals (%box: ref, %tag: bool, %updated: bool, %seen: i64);
+  entry ^entry;
+  ^entry:
+    [%box: ref, %tag: bool] = runtime "heap.unpack"(%held) {"layout":"Worker"};
+    [%updated: bool] = runtime "heap.is_layout"(%box) {"layout":"Result"};
+    branch %updated, ^read, ^bad;
+  ^read:
+    [%seen: i64] = runtime "heap.read"(%box) {"layout":"Result","field":"0"};
+    branch %flag, ^yes, ^no;
+  ^yes:
+    [] = runtime "trace.emit"(%seen) {"label":"true"};
+    tail @finish(%seen);
+  ^no:
+    [] = runtime "trace.emit"(%value) {"label":"false"};
+    resume %value;
+  ^bad:
+    fail "heap-layout";
+}
+
+routine @finish(%value: i64) {
+  locals ();
+  entry ^entry;
+  ^entry:
+    resume %value;
+}
+
+function @bump(%n: i64) -> i64 {
+  locals (%next: i64);
+  entry ^entry;
+  ^entry:
+    [%next: i64] = add(%n, 1);
+    return %next;
+}

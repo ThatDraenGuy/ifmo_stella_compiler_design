@@ -1,0 +1,25 @@
+// Stella IR example: simultaneous phi assignments; see ../README.md.
+stella-ir 1 ssa "stella-ir-base-v1";
+
+export @swap;
+
+function @swap(%a: i64, %b: i64, %count: i64) -> i64 {
+  entry ^entry;
+  ^entry:
+    jump ^loop;
+  ^loop:
+    %x: i64 = phi {^entry: %a, ^body: %y};
+    %y: i64 = phi {^entry: %b, ^body: %x};
+    %left: i64 = phi {^entry: %count, ^body: %next};
+    [%more: bool] = gt(%left, 0);
+    branch %more, ^body, ^done;
+  ^body:
+    [%next: i64] = sub(%left, 1);
+    jump ^loop;
+  ^done:
+    [%answer: i64] = sub(%x, %y);
+    return %answer;
+  ^unreachable:
+    %unused: i64 = phi {};
+    return %unused;
+}

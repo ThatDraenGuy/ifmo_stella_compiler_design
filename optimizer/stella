@@ -1,0 +1,8 @@
+#!/bin/sh
+# Supplied compiler launcher; run from the starter directory.
+set -eu
+exec docker run --rm -i --network=none --read-only \
+  --tmpfs /tmp:exec,mode=1777 \
+  --user "$(id -u):$(id -g)" \
+  --mount "type=bind,source=$PWD,target=/work" \
+  "${STELLA_IMAGE:-fizruk/stella@sha256:f112c0c2e9d48d5860ecf6ccd1873ce86ff9deb3b714a858a2fbc90753b9de1b}" "$@"

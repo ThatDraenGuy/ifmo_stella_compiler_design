@@ -1,0 +1,1164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stella IR unit, format version 1",
+  "$comment": "Structural schema from Stella IR v1. See README.md for the student contract and attribution. The supplied verifier also checks names, types, graph structure, dominance, and scope.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/cfgUnit"
+    },
+    {
+      "$ref": "#/$defs/ssaUnit"
+    },
+    {
+      "$ref": "#/$defs/functionalUnit"
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?![\\s\\S])"
+    },
+    "type": {
+      "enum": [
+        "i64",
+        "bool",
+        "ref"
+      ]
+    },
+    "unsigned": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)(?![\\s\\S])"
+    },
+    "integer": {
+      "type": "string",
+      "pattern": "^(0|-?[1-9][0-9]*)(?![\\s\\S])"
+    },
+    "error": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?![\\s\\S])"
+    },
+    "binding": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "type": {
+          "$ref": "#/$defs/type"
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "operand": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "var": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "required": [
+            "var"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "i64": {
+              "$ref": "#/$defs/integer"
+            }
+          },
+          "required": [
+            "i64"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "bool": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "bool"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "static": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/static"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/static"
+          }
+        }
+      ]
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/static"
+      }
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/type"
+          }
+        },
+        "capacity": {
+          "$ref": "#/$defs/unsigned"
+        },
+        "entry": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updatable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "fields",
+        "capacity",
+        "entry",
+        "updatable"
+      ],
+      "additionalProperties": false
+    },
+    "frame": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "saved": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/type"
+          }
+        },
+        "result": {
+          "$ref": "#/$defs/type"
+        },
+        "target": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "name",
+        "saved",
+        "result",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "scalar": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "enum": [
+            "copy",
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "rem",
+            "eq",
+            "ne",
+            "lt",
+            "le",
+            "gt",
+            "ge",
+            "not",
+            "and",
+            "or",
+            "xor"
+          ]
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/binding"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "op",
+        "args",
+        "results"
+      ],
+      "additionalProperties": false
+    },
+    "call": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "call"
+        },
+        "callee": {
+          "$ref": "#/$defs/identifier"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/binding"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "op",
+        "callee",
+        "args",
+        "results"
+      ],
+      "additionalProperties": false
+    },
+    "run": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "run"
+        },
+        "target": {
+          "$ref": "#/$defs/identifier"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/binding"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "op",
+        "target",
+        "args",
+        "results"
+      ],
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "runtime"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/binding"
+          }
+        },
+        "attributes": {
+          "$ref": "#/$defs/attributes"
+        }
+      },
+      "required": [
+        "op",
+        "name",
+        "args",
+        "results",
+        "attributes"
+      ],
+      "additionalProperties": false
+    },
+    "instruction": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/scalar"
+        },
+        {
+          "$ref": "#/$defs/call"
+        },
+        {
+          "$ref": "#/$defs/run"
+        },
+        {
+          "$ref": "#/$defs/runtime"
+        }
+      ]
+    },
+    "phi": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "phi"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/binding"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "incoming": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pred": {
+                "$ref": "#/$defs/identifier"
+              },
+              "value": {
+                "$ref": "#/$defs/operand"
+              }
+            },
+            "required": [
+              "pred",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "op",
+        "results",
+        "incoming"
+      ],
+      "additionalProperties": false
+    },
+    "ssaInstruction": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/instruction"
+        },
+        {
+          "$ref": "#/$defs/phi"
+        }
+      ]
+    },
+    "jump": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "jump"
+        },
+        "target": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "op",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "branch": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "branch"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "then": {
+          "$ref": "#/$defs/identifier"
+        },
+        "else": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "op",
+        "args",
+        "then",
+        "else"
+      ],
+      "additionalProperties": false
+    },
+    "return": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "return"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "tail": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "tail"
+        },
+        "target": {
+          "$ref": "#/$defs/identifier"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          }
+        }
+      },
+      "required": [
+        "op",
+        "target",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "tailEntry": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "tail-entry"
+        },
+        "signature": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/type"
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "op",
+        "signature",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "resume": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "resume"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operand"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "fail": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "fail"
+        },
+        "error": {
+          "$ref": "#/$defs/error"
+        }
+      },
+      "required": [
+        "op",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "exit": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/return"
+        },
+        {
+          "$ref": "#/$defs/tail"
+        },
+        {
+          "$ref": "#/$defs/tailEntry"
+        },
+        {
+          "$ref": "#/$defs/resume"
+        },
+        {
+          "$ref": "#/$defs/fail"
+        }
+      ]
+    },
+    "terminator": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/jump"
+        },
+        {
+          "$ref": "#/$defs/branch"
+        },
+        {
+          "$ref": "#/$defs/exit"
+        }
+      ]
+    },
+    "cfgBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/instruction"
+          }
+        },
+        "terminator": {
+          "$ref": "#/$defs/terminator"
+        }
+      },
+      "required": [
+        "name",
+        "instructions",
+        "terminator"
+      ],
+      "additionalProperties": false
+    },
+    "ssaBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ssaInstruction"
+          }
+        },
+        "terminator": {
+          "$ref": "#/$defs/terminator"
+        }
+      },
+      "required": [
+        "name",
+        "instructions",
+        "terminator"
+      ],
+      "additionalProperties": false
+    },
+    "localFunction": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/binding"
+          }
+        },
+        "body": {
+          "$ref": "#/$defs/expression"
+        }
+      },
+      "required": [
+        "name",
+        "params",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "expression": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "let"
+            },
+            "instruction": {
+              "$ref": "#/$defs/instruction"
+            },
+            "body": {
+              "$ref": "#/$defs/expression"
+            }
+          },
+          "required": [
+            "op",
+            "instruction",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "do"
+            },
+            "instruction": {
+              "$ref": "#/$defs/instruction"
+            },
+            "body": {
+              "$ref": "#/$defs/expression"
+            }
+          },
+          "required": [
+            "op",
+            "instruction",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "if"
+            },
+            "condition": {
+              "$ref": "#/$defs/operand"
+            },
+            "then": {
+              "$ref": "#/$defs/expression"
+            },
+            "else": {
+              "$ref": "#/$defs/expression"
+            }
+          },
+          "required": [
+            "op",
+            "condition",
+            "then",
+            "else"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "letrec"
+            },
+            "functions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/localFunction"
+              },
+              "minItems": 1
+            },
+            "body": {
+              "$ref": "#/$defs/expression"
+            }
+          },
+          "required": [
+            "op",
+            "functions",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "jump"
+            },
+            "target": {
+              "$ref": "#/$defs/identifier"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/operand"
+              }
+            }
+          },
+          "required": [
+            "op",
+            "target",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$ref": "#/$defs/exit"
+        }
+      ]
+    },
+    "cfgCallable": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "function"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            },
+            "params": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binding"
+              }
+            },
+            "result": {
+              "$ref": "#/$defs/type"
+            },
+            "locals": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binding"
+              }
+            },
+            "entry": {
+              "$ref": "#/$defs/identifier"
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/cfgBlock"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "params",
+            "result",
+            "locals",
+            "entry",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "routine"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            },
+            "params": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binding"
+              }
+            },
+            "locals": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binding"
+              }
+            },
+            "entry": {
+              "$ref": "#/$defs/identifier"
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/cfgBlock"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "params",
+            "locals",
+            "entry",
+            "blocks"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "cfgUnit": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "stella-ir"
+        },
+        "version": {
+          "const": "1"
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "form": {
+          "const": "cfg"
+        },
+        "exports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        },
+        "layouts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layout"
+          }
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/frame"
+          }
+        },
+        "callables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cfgCallable"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "version",
+        "profile",
+        "form",
+        "exports",
+        "layouts",
+        "frames",
+        "callables"
+      ],
+      "additionalProperties": false
+    },
+    "ssaCallable": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "function"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            },
+            "params": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binding"
+              }
+            },
+            "result": {
+              "$ref": "#/$defs/type"
+            },
+            "entry": {
+              "$ref": "#/$defs/identifier"
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ssaBlock"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "params",
+            "result",
+            "entry",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "routine"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            },
+            "params": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binding"
+              }
+            },
+            "entry": {
+              "$ref": "#/$defs/identifier"
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ssaBlock"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "params",
+            "entry",
+            "blocks"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ssaUnit": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "stella-ir"
+        },
+        "version": {
+          "const": "1"
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "form": {
+          "const": "ssa"
+        },
+        "exports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        },
+        "layouts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layout"
+          }
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/frame"
+          }
+        },
+        "callables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ssaCallable"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "version",
+        "profile",
+        "form",
+        "exports",
+        "layouts",
+        "frames",
+        "callables"
+      ],
+      "additionalProperties": false
+    },
+    "functionalCallable": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "function"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            },
+            "params": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binding"
+              }
+            },
+            "result": {
+              "$ref": "#/$defs/type"
+            },
+            "body": {
+              "$ref": "#/$defs/expression"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "params",
+            "result",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "routine"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            },
+            "params": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binding"
+              }
+            },
+            "body": {
+              "$ref": "#/$defs/expression"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "params",
+            "body"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "functionalUnit": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "stella-ir"
+        },
+        "version": {
+          "const": "1"
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "form": {
+          "const": "functional"
+        },
+        "exports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        },
+        "layouts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layout"
+          }
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/frame"
+          }
+        },
+        "callables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/functionalCallable"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "version",
+        "profile",
+        "form",
+        "exports",
+        "layouts",
+        "frames",
+        "callables"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

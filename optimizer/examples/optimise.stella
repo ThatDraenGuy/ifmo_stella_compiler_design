@@ -1,0 +1,9 @@
+// Пример для SCCP, DCE и CSE: повторное сложение, константная ветвь
+// и неиспользуемое умножение. Составлен для этапа 2.
+language core;
+extend with #int64, #integer-literals, #let-bindings;
+fn main(x : Int64) -> Int64 {
+  return let a = Int64::add(x, 1), b = Int64::add(x, 1),
+             unused = Int64::mul(x, 9)
+         in if Int64::eq(2, 2) then Int64::add(a, b) else 0
+}
