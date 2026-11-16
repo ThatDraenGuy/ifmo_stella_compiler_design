@@ -1,0 +1,19 @@
+[package]
+name = "stellac-optimizer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+regress = "0.12.0"
+bitvector = "0.1.5"
+slotmap = "1.1.1"
+
+
+[build-dependencies]
+prettyplease = "0.3"
+schemars = "0.8"
+serde_json = "1.0"
+syn = "3.0"
+typify = "0.10.1"
