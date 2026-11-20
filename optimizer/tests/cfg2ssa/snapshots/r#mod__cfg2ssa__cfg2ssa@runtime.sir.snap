@@ -1,0 +1,67 @@
+---
+source: optimizer/tests/cfg2ssa/mod.rs
+expression: res
+input_file: optimizer/tests/cfg2ssa/inputs/runtime.sir
+---
+stella-ir 1 ssa "stella-ir-base-v1";
+export @main;
+layout $Box fields (i64) capacity 1 updatable true entry none;
+layout $Result fields (i64) capacity 1 updatable false entry none;
+layout $Worker fields (ref, bool) capacity 2 updatable false entry @apply;
+frame !After saved (ref, bool) result i64 target @after;
+function @main(%flag: bool, %n: i64) -> i64 {
+  entry ^entry;
+  ^entry:
+    [%box_1: ref] = runtime "heap.alloc"(%n) {"layout":"Box"};
+    [%worker_1: ref] = runtime "heap.alloc"(%box_1, %flag) {"layout":"Worker"};
+    [%answer_1: i64] = run @start(%worker_1, %flag);
+    return %answer_1;
+}
+routine @start(%worker: ref, %flag: bool) {
+  entry ^entry;
+  ^entry:
+    [] = runtime "frame.push"(%worker, %flag) {"frame":"After"};
+    tail-entry (i64)(%worker, 5);
+}
+routine @apply(%self: ref, %amount: i64) {
+  entry ^entry;
+  ^entry:
+    [%box_1: ref, %tag_1: bool] = runtime "heap.unpack"(%self) {"layout":"Worker"};
+    [%old_1: i64] = runtime "heap.read"(%box_1) {"field":"0","layout":"Box"};
+    [%increment_1: i64] = call @bump(%amount);
+    [%new_1: i64] = add(%old_1, %increment_1);
+    [] = runtime "heap.write"(%box_1, %new_1) {"field":"0","layout":"Box"};
+    [] = runtime "heap.replace"(%box_1, %new_1) {"layout":"Result"};
+    resume %new_1;
+}
+routine @after(%held: ref, %flag: bool, %value: i64) {
+  entry ^entry;
+  ^entry:
+    [%box_1: ref, %tag_1: bool] = runtime "heap.unpack"(%held) {"layout":"Worker"};
+    [%updated_1: bool] = runtime "heap.is_layout"(%box_1) {"layout":"Result"};
+    branch %updated_1, ^read, ^bad;
+  ^bad:
+    fail "heap-layout";
+  ^read:
+    [%seen_1: i64] = runtime "heap.read"(%box_1) {"field":"0","layout":"Result"};
+    branch %flag, ^yes, ^no;
+  ^no:
+    %seen_3: i64 = phi {^read: %seen_1};
+    [] = runtime "trace.emit"(%value) {"label":"false"};
+    resume %value;
+  ^yes:
+    %seen_2: i64 = phi {^read: %seen_1};
+    [] = runtime "trace.emit"(%seen_2) {"label":"true"};
+    tail @finish(%seen_2);
+}
+routine @finish(%value: i64) {
+  entry ^entry;
+  ^entry:
+    resume %value;
+}
+function @bump(%n: i64) -> i64 {
+  entry ^entry;
+  ^entry:
+    [%next_1: i64] = add(%n, 1);
+    return %next_1;
+}

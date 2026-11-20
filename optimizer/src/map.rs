@@ -17,28 +17,24 @@ impl<K: InnerVecKey> VecKey for K {}
 pub struct VecMap<K: VecKey, V> {
     inner: Vec<Option<V>>,
     phantom: PhantomData<K>,
-    len: usize,
 }
 impl<K: VecKey, V> VecMap<K, V> {
     pub fn new() -> Self {
         Self {
             inner: Vec::new(),
             phantom: PhantomData::default(),
-            len: 0,
         }
     }
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: Vec::with_capacity(capacity),
             phantom: PhantomData::default(),
-            len: 0,
         }
     }
 
     pub fn insert(&mut self, value: V) -> K {
-        let key = K::from_index(self.len);
-        self.inner[self.len] = Some(value);
-        self.len += 1;
+        let key = K::from_index(self.inner.len());
+        self.inner.push(Some(value));
         key
     }
     pub fn get(&self, key: K) -> Option<&V> {
@@ -51,7 +47,7 @@ impl<K: VecKey, V> VecMap<K, V> {
             .flatten()
     }
     pub fn len(&self) -> usize {
-        self.len
+        self.inner.len()
     }
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (K, &V)> {
         self.inner
@@ -61,29 +57,29 @@ impl<K: VecKey, V> VecMap<K, V> {
     }
 
     pub fn bitmap_zeros(&self) -> BitMap<K> {
-        BitMap::zeroes(self.len)
+        BitMap::zeroes(self.len())
     }
     pub fn bitmap_ones(&self) -> BitMap<K> {
-        BitMap::ones(self.len)
+        BitMap::ones(self.len())
     }
     pub fn bitmaps_zeros(&self) -> ViewMap<K, BitMap<K>> {
         ViewMap {
-            inner: vec![BitMap::zeroes(self.len); self.len],
+            inner: vec![BitMap::zeroes(self.len()); self.len()],
             phantom: PhantomData::default(),
         }
     }
     pub fn bitmaps_ones(&self) -> ViewMap<K, BitMap<K>> {
         ViewMap {
-            inner: vec![BitMap::ones(self.len); self.len],
+            inner: vec![BitMap::ones(self.len()); self.len()],
             phantom: PhantomData::default(),
         }
     }
 
     pub fn empty_work_queue(&self) -> WorkQueue<K> {
-        WorkQueue::empty(self.len)
+        WorkQueue::empty(self.len())
     }
     pub fn work_queue(&self, order: impl Iterator<Item = K>) -> WorkQueue<K> {
-        WorkQueue::new(order, self.len)
+        WorkQueue::new(order, self.len())
     }
 
     pub fn view_map<T, F: FnMut(K, &V) -> T>(&self, mut init: F) -> ViewMap<K, T> {
@@ -117,6 +113,18 @@ impl<K: VecKey, V> ViewMap<K, V> {
     }
     pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
         self.inner.get_mut(key.as_index())
+    }
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (K, &V)> {
+        self.inner
+            .iter()
+            .enumerate()
+            .map(|(idx, v)| (K::from_index(idx), v))
+    }
+    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (K, &mut V)> {
+        self.inner
+            .iter_mut()
+            .enumerate()
+            .map(|(idx, v)| (K::from_index(idx), v))
     }
 }
 impl<K: VecKey, V> Index<K> for ViewMap<K, V> {
@@ -183,6 +191,9 @@ impl<K: VecKey> BitMap<K> {
     }
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
+    }
+    pub fn len(&self) -> usize {
+        self.inner.len()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = K> + use<'_, K> {

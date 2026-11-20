@@ -1,0 +1,26 @@
+---
+source: optimizer/tests/cfg2ssa/mod.rs
+expression: res
+input_file: optimizer/tests/cfg2ssa/inputs/optimise.sir
+---
+stella-ir 1 ssa "stella-ir-base-v1";
+export @main;
+function @main(%argument0: i64) -> i64 {
+  entry ^block1;
+  ^block1:
+    [%value2_1: i64] = add(%argument0, 1);
+    [%value3_1: i64] = add(%argument0, 1);
+    [%value4_1: i64] = mul(%argument0, 9);
+    [%value5_1: bool] = eq(2, 2);
+    branch %value5_1, ^block7, ^block8;
+  ^block8:
+    [%value6_2: i64] = copy(0);
+    jump ^block9;
+  ^block7:
+    [%value10_1: i64] = add(%value2_1, %value3_1);
+    [%value6_1: i64] = copy(%value10_1);
+    jump ^block9;
+  ^block9:
+    %value6_3: i64 = phi {^block7: %value6_1, ^block8: %value6_2};
+    return %value6_3;
+}

@@ -1,0 +1,21 @@
+stella-ir 1 cfg "stella-ir-base-v1";
+export @main;
+function @main(%argument0: i64) -> i64 {
+  locals (%value2: i64, %value3: i64, %value4: i64, %value5: bool, %value6: i64, %value10: i64);
+  entry ^block1;
+  ^block1:
+    [%value2: i64] = add(%argument0, 1);
+    [%value3: i64] = add(%argument0, 1);
+    [%value4: i64] = mul(%argument0, 9);
+    [%value5: bool] = eq(2, 2);
+    branch %value5, ^block7, ^block8;
+  ^block7:
+    [%value10: i64] = add(%value2, %value3);
+    [%value6: i64] = copy(%value10);
+    jump ^block9;
+  ^block8:
+    [%value6: i64] = copy(0);
+    jump ^block9;
+  ^block9:
+    return %value6;
+}
