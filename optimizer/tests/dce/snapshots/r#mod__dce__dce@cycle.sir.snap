@@ -1,0 +1,21 @@
+---
+source: optimizer/tests/dce/mod.rs
+expression: res
+input_file: optimizer/tests/dce/inputs/cycle.sir
+---
+stella-ir 1 ssa "stella-ir-base-v1";
+export @main;
+function @main(%arg: i64) -> i64 {
+  entry ^blockE;
+  ^blockE:
+    jump ^blockH;
+  ^blockH:
+    %i: i64 = phi {^blockE: 0, ^blockB: %j};
+    [%boolval_1: bool] = lt(%i, %arg);
+    branch %boolval_1, ^blockB, ^blockX;
+  ^blockB:
+    [%j: i64] = add(%i, 1);
+    jump ^blockH;
+  ^blockX:
+    return %i;
+}

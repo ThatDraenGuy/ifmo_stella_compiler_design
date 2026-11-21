@@ -55,6 +55,12 @@ impl<K: VecKey, V> VecMap<K, V> {
             .enumerate()
             .map(|(idx, v)| (K::from_index(idx), v.as_ref().unwrap()))
     }
+    pub fn drain(self) -> impl ExactSizeIterator<Item = (K, V)> {
+        self.inner
+            .into_iter()
+            .enumerate()
+            .map(|(idx, v)| (K::from_index(idx), v.unwrap()))
+    }
 
     pub fn bitmap_zeros(&self) -> BitMap<K> {
         BitMap::zeroes(self.len())
@@ -358,3 +364,22 @@ mod var {
     }
 }
 pub use var::*;
+
+mod instr {
+    use crate::map::InnerVecKey;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct InstrId(usize);
+    impl InnerVecKey for InstrId {
+        #[inline]
+        fn as_index(&self) -> usize {
+            self.0
+        }
+
+        #[inline]
+        fn from_index(idx: usize) -> Self {
+            Self(idx)
+        }
+    }
+}
+pub use instr::*;

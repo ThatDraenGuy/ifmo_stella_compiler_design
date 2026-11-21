@@ -4,5 +4,6 @@ build/
 userbuild/
 testbuild/
 *.log
+.tmp*
 
 target/

@@ -1,0 +1,23 @@
+---
+source: optimizer/tests/dce/mod.rs
+expression: res
+input_file: optimizer/tests/dce/inputs/simple.sir
+---
+stella-ir 1 ssa "stella-ir-base-v1";
+export @main;
+function @main(%arg: i64) -> i64 {
+  entry ^block1;
+  ^block1:
+    [%value_1: i64] = add(%arg, 1);
+    [%boolval_1: bool] = eq(2, 2);
+    branch %boolval_1, ^block2, ^block3;
+  ^block3:
+    [%value_3: i64] = sub(%value_1, %value_1);
+    jump ^block4;
+  ^block2:
+    [%value_2: i64] = add(%value_1, %value_1);
+    jump ^block4;
+  ^block4:
+    %value_4: i64 = phi {^block2: %value_2, ^block3: %value_3};
+    return %value_4;
+}
